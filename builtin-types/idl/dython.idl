@@ -1,0 +1,15 @@
+module dython {
+  module bit {
+    struct KDython {
+      string key;
+      string value;
+    };
+#pragma keylist KDython key
+    
+    struct Dython {
+      string value;
+    };
+#pragma  keylist Dython
+  };
+};
+
