@@ -4,6 +4,7 @@ __author__ = 'Angelo Corsaro'
 from ctypes import *
 import sys
 import os
+import jsonpickle
 
 # TODO: Fix this to go and look for the right library...
 lite_lib = 'libdds.dylib'
@@ -133,6 +134,15 @@ class Subscriber:
         self.handle = c_void_p()
         self.rt.ddslib.dds_subscriber_create(dp.handle, byref(self.handle), qos, None)
 
+class FlexyTopic:
+    def __init__(self, dp, name, keygen, qos):
+        global theRuntime
+        self.rt = theRuntime
+        self.keygen = keygen
+        ts = self.rt.getKeyValueTypeSupport()
+        self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
+
+
 class Topic:
     def __init__(self, dp, topic_name, type_support, data_type, qos):
         global theRuntime
@@ -145,6 +155,24 @@ class Topic:
         self.handle = c_void_p()
         self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name, qos, None)
 
+
+
+class FlexyWriter:
+    def __init__(self, pub, flexy_topic, qos):
+        self.writer = DataWriter(pub, flexy_topic.topic, qos)
+        self.keygen = flexy_topic.keygen
+
+    def write(self, s):
+        # key = json.dumps(self.keygen(s))
+        # value = json.dumps(s)
+        key = jsonpickle.encode(self.keygen(s))
+        value = jsonpickle.encode(s)
+        x = DDSKeyValue(key, value)
+        self.writer.write(x)
+
+    def write_all(self, xs):
+        for x in xs:
+            self.write(x)
 
 class DataWriter:
     def __init__(self, pub, topic, qos):
@@ -159,6 +187,50 @@ class DataWriter:
 
     def write(self, s):
         self.rt.ddslib.dds_write(self.handle, byref(s))
+
+class FlexyReader:
+    def __init__(self, sub, flexy_topic, qos, flexyDataListener):
+        global theRuntime
+        self.rt = theRuntime
+        self.sub = sub
+        self.flexy_topic = flexy_topic
+        self.qos = qos
+        self.dataListener = flexyDataListener
+
+        holder = DDSReaderListener(self.rt.on_requested_deadline_missed,
+                                   self.rt.on_requested_incompatible_qos,
+                                   self.rt.on_sample_rejected,
+                                   self.rt.on_liveliness_changed,
+                                   self.rt.on_data_available,
+                                   self.rt.on_subscription_matched,
+                                   self.rt.on_sample_lost)
+        self.handle = c_void_p()
+        topic = self.flexy_topic.topic
+        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, None, byref(holder))
+        self.rt.registerDataListener(self.handle, self.handleData)
+
+    def handleData(self, r):
+        self.dataListener(self)
+
+    def read(self, n, sampleSelector):
+        # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
+        #        I'll fix it once proper support for SampleInfo will be in place
+        info_len = n * 256  # 128 should be enough... but we keep it safe
+        Info_t = c_byte * info_len
+
+        info = cast(Info_t(), c_void_p)
+
+        SampleVec_t = c_void_p * n
+        samples = SampleVec_t()
+        nr = theRuntime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
+        data = []
+        for s in samples:
+            sp = cast(c_void_p(samples[0]), POINTER(self.flexy_topic.topic.data_type))
+            data.append(jsonpickle.decode(sp[0].value))
+
+        return data
+
+
 
 class DataReader:
     def __init__(self, sub, topic, qos, dataListener):

@@ -43,7 +43,7 @@ int main (int argc, char ** argv)
 
   /* Create topic */
 
-  status = dds_topic_create (ppant, &topic, &dython_bit_KDython_desc, "KeyValye", qos, NULL);
+  status = dds_topic_create (ppant, &topic, &dython_bit_KDython_desc, "KeyValue", qos, NULL);
 
   DDS_ERR_CHECK (status, DDS_CHECK_REPORT | DDS_CHECK_EXIT);
 

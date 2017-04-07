@@ -84,7 +84,7 @@ int main (int argc, char ** argv)
 
   /* Create topic. */
 
-  ret = dds_topic_create (ppant, &topic, &dython_bit_KDython_desc, "KeyValye", qos, NULL);
+  ret = dds_topic_create (ppant, &topic, &dython_bit_KDython_desc, "KeyValue", qos, NULL);
   DDS_ERR_CHECK (ret, DDS_CHECK_REPORT | DDS_CHECK_EXIT);
 
   /* Create subscriber. */
