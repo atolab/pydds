@@ -70,8 +70,7 @@ int main (int argc, char ** argv)
   gc = dds_guardcondition_create ();
   status = dds_waitset_attach (pms, gc, writer);
   DDS_ERR_CHECK (status, DDS_CHECK_REPORT | DDS_CHECK_EXIT);
-
-  printf ("Waiting for Reader to start...\n");
+    printf ("Waiting for Reader to start...\n");
   fflush (stdout);
   status = dds_waitset_wait (pms, 0, 0, timeout);
   DDS_ERR_CHECK (status, DDS_CHECK_REPORT | DDS_CHECK_EXIT);
