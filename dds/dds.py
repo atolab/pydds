@@ -1,19 +1,19 @@
-__author__ = 'Angelo Corsaro'
-
-
 from ctypes import *
-import sys
 import os
 import jsonpickle
 
-# TODO: Fix this to go and look for the right library...
+
+__author__ = 'Angelo Corsaro'
+
+
+#@TODO: Fix this to go and look for the right library...
 lite_lib = 'libdds.dylib'
 bit_lib = 'libdython.dylib'
 lite_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + lite_lib
 # Yes, this assumes that the Python BIT should be under the lite lib... If not there copy it!
 bit_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + bit_lib
 #############################################################################
-#### Statuses
+### Statuses
 DDS_READ_SAMPLE_STATE = 1
 DDS_NOT_READ_SAMPLE_STATE = 2
 DDS_ANY_SAMPLE_STATE = DDS_READ_SAMPLE_STATE | DDS_NOT_READ_SAMPLE_STATE
@@ -84,61 +84,73 @@ DDS_LIVELINESS_AUTOMATIC = 0
 DDS_LIVELINESS_MANUAL_BY_PARTICIPANT = 1
 DDS_LIVELINESS_MANUAL_BY_TOPIC = 2
 
+
 class Policy:
     def __init__(self, id):
         self.id = id
+
 
 class Partition(Policy):
     def __init__(self, ps):
         Policy.__init__(self, DDS_PARTITION_QOS_POLICY_ID)
         self.partitions = ps
 
+
 class Reliable(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_RELIABILITY_RELIABLE)
         self.max_blocking_time = 0
 
+
 class BestEffort(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_RELIABILITY_BEST_EFFORT)
+
 
 class KeepLastHistory(Policy):
     def __init__(self, depth):
         Policy.__init__(self, DDS_HISTORY_KEEP_LAST)
         self.depth = depth
 
+
 class KeepAllHistory(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_HISTORY_KEEP_ALL)
+
 
 class Volatile(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_DURABILITY_VOLATILE)
 
+
 class TransientLocal(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_DURABILITY_TRANSIENT_LOCAL)
+
 
 class Transient(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_DURABILITY_TRANSIENT)
 
+
 class Persistent(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_DURABILITY_PERSISTENT)
+
 
 class ExclusiveOwnership(Policy):
     def __init__(self, strength):
         Policy.__init__(self, DDS_OWNERSHIP_EXCLUSIVE)
         self.strength = strength
 
+
 class SharedOwnership(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_OWNERSHIP_SHARED)
 
 
-
 theRuntime = None
+
 
 class SampleSelector:
     @staticmethod
@@ -171,13 +183,13 @@ class DDSKeyValue(Structure):
 
 
 
-REQUESTED_DEADLINE_MISSED_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
-REQUESTED_INCOMPATIBLE_QOS_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
-SAMPLE_REJECTED_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
-LIVELINESS_CHANGED_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
-DATA_AVAILABLE_PROTO  =  CFUNCTYPE(None, c_void_p)
-SUBSCRIPTION_MATCHED_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
-SAMPLE_LOST_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
+REQUESTED_DEADLINE_MISSED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
+REQUESTED_INCOMPATIBLE_QOS_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
+SAMPLE_REJECTED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
+LIVELINESS_CHANGED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
+DATA_AVAILABLE_PROTO = CFUNCTYPE(None, c_void_p)
+SUBSCRIPTION_MATCHED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
+SAMPLE_LOST_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
 
 
 # There are actually used to check the the listener are actually working...
@@ -185,14 +197,18 @@ SAMPLE_LOST_PROTO  = CFUNCTYPE(None, c_void_p, c_void_p)
 def trivial_on_requested_deadline_missed(e, s):
     print(">> trivial_on_requested_deadline_missed")
 
+
 def trivial_on_requested_incompatible_qos(e, s):
     print(">> trivial_on_requested_incompatible_qos")
+
 
 def trivial_on_sample_rejected(e, s):
     print(">> trivial_on_sample_rejected")
 
+
 def trivial_on_liveliness_changed(e, s):
     print(">> trivial_on_liveliness_changed")
+
 
 def trivial_on_data_available(r):
     Runtime.dispatchDataListener(c_void_p(r))
@@ -200,6 +216,7 @@ def trivial_on_data_available(r):
 
 def trivial_on_subscription_matched(e, s):
     print(">> trivial_on_subscription_matched")
+
 
 def trivial_on_sample_lost(e, s):
     print(">> trivial_on_sample_lost")
@@ -223,6 +240,7 @@ class Participant:
         self.handle = c_void_p()
         self.rt.ddslib.dds_participant_create(byref(self.handle), did, None, None)
 
+
 class Publisher:
     def __init__(self, dp, policies):
         global theRuntime
@@ -234,6 +252,7 @@ class Publisher:
         self.rt.ddslib.dds_publisher_create(dp.handle, byref(self.handle), qos, None)
         self.rt.releaseDDSQoS(qos)
 
+
 class Subscriber:
     def __init__(self, dp, policies):
         global theRuntime
@@ -244,6 +263,7 @@ class Subscriber:
         qos = self.rt.toPubSubQos(policies)
         self.rt.ddslib.dds_subscriber_create(dp.handle, byref(self.handle), qos, None)
         self.rt.releaseDDSQoS(qos)
+
 
 class FlexyTopic:
     def __init__(self, dp, name, keygen, qos):
@@ -267,7 +287,6 @@ class Topic:
         self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name, qos, None)
 
 
-
 class FlexyWriter:
     def __init__(self, pub, flexy_topic, policies):
         self.writer = DataWriter(pub, flexy_topic.topic, policies)
@@ -283,6 +302,7 @@ class FlexyWriter:
         for x in xs:
             self.write(x)
 
+
 class DataWriter:
     def __init__(self, pub, topic, policies):
         global theRuntime
@@ -293,10 +313,11 @@ class DataWriter:
         self.handle = c_void_p()
 
         qos = self.rt.toRWQos(policies)
-        self.rt.ddslib.dds_writer_create(pub.handle, byref(self.handle ), topic.handle, qos, None)
+        self.rt.ddslib.dds_writer_create(pub.handle, byref(self.handle), topic.handle, qos, None)
 
     def write(self, s):
         self.rt.ddslib.dds_write(self.handle, byref(s))
+
 
 class FlexyReader:
     def __init__(self, sub, flexy_topic, policies, flexyDataListener):
@@ -323,6 +344,7 @@ class FlexyReader:
     def handleData(self, r):
         self.dataListener(self)
 
+
     def read(self, n, sampleSelector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
@@ -335,13 +357,14 @@ class FlexyReader:
         samples = SampleVec_t()
         nr = theRuntime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
         data = []
+
         for s in samples:
             sp = cast(c_void_p(samples[0]), POINTER(self.flexy_topic.topic.data_type))
             data.append(jsonpickle.decode(sp[0].value))
 
         return data
 
-     def take(self, n, sampleSelector):
+    def take(self, n, sampleSelector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
         info_len = n * 256  # 128 should be enough... but we keep it safe
@@ -358,7 +381,6 @@ class FlexyReader:
             data.append(jsonpickle.decode(sp[0].value))
 
         return data
-
 
 class DataReader:
     def __init__(self, sub, topic, policies, dataListener):
@@ -421,10 +443,8 @@ class DataReader:
         return data
 
 
-
 class Error(Exception):
     pass
-
 
 class Runtime:
 
@@ -456,7 +476,7 @@ class Runtime:
         self.ddslib.dds_qos_delete.restype = None
         self.ddslib.dds_qos_delete.argtypes = [c_void_p]
 
-        self.ddslib.dds_qset_durability.restype  = None
+        self.ddslib.dds_qset_durability.restype = None
         self.ddslib.dds_qset_durability.argtypes = [c_void_p, c_uint32]
 
         self.ddslib.dds_qset_history.restype = None
@@ -528,16 +548,11 @@ class Runtime:
             return qos
 
 
-
     def toPubSubQos(self, ps):
         if ps == None:
             return None
 
         qos = self.createDDSQoS()
-
-        # self.ddslib.dds_qset_durability(qos, DDS_DURABILITY_PERSISTENT)
-
-        print '>> Create Qos'
         xs = filter(lambda p: p.id == DDS_PARTITION_QOS_POLICY_ID, ps)
 
         if len(xs) > 0:
@@ -548,9 +563,6 @@ class Runtime:
             self.ddslib.dds_qset_partition (qos, c_uint32(L), vec)
         return qos
 
-
-    def __toctypeString(self, s):
-        None
 
     def createDDSQoS(self):
         return c_void_p(self.ddslib.dds_qos_create())
