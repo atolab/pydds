@@ -1,6 +1,6 @@
 _author__ = 'Angelo Corsaro'
 
-from dds import *
+from dds.dds import *
 import  time
 import sys
 from random import randint
@@ -30,13 +30,13 @@ if __name__ == '__main__':
         cid = int(sys.argv[0])
 
     # Always create a runtime to initialise DDS
-    rt = dds.Runtime()
+    rt = Runtime()
     dp = Participant(0)
 
     # 'VehiclePosition'
     t = FlexyTopic(dp, 'KeyValue', lambda  s: s.key, None)
 
-    p = Publisher(dp, [Partition(["dds-python.demo"])])
+    p = Publisher(dp, [Partition(['dds-python.demo'])])
     w = FlexyWriter(p, t, [Reliable(),KeepLastHistory(1)])
 
     vpos = VehiclePosition(cid)

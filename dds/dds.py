@@ -12,6 +12,10 @@ bit_lib = 'libdython.dylib'
 lite_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + lite_lib
 # Yes, this assumes that the Python BIT should be under the lite lib... If not there copy it!
 bit_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + bit_lib
+
+# Limits and Constants
+MAX_SAMPLES = 256
+
 #############################################################################
 ### Statuses
 DDS_READ_SAMPLE_STATE = 1
@@ -149,38 +153,32 @@ class SharedOwnership(Policy):
         Policy.__init__(self, DDS_OWNERSHIP_SHARED)
 
 
-theRuntime = None
+the_runtime = None
 
 
-class SampleSelector:
-    @staticmethod
-    def readSamples():
-        return c_uint(DDS_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_ANY_VIEW_STATE)
 
-    @staticmethod
-    def newSamples():
-        return c_uint(DDS_NOT_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_ANY_VIEW_STATE)
+def read_samples():
+    return c_uint(DDS_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_ANY_VIEW_STATE)
 
-    @staticmethod
-    def allSamples():
-        return c_uint(DDS_ANY_STATE)
+def new_samples():
+    return c_uint(DDS_NOT_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_ANY_VIEW_STATE)
 
-    @staticmethod
-    def newInstanceSamples():
-        return c_uint(DDS_NOT_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_NEW_VIEW_STATE)
+def all_samples():
+    return c_uint(DDS_ANY_STATE)
 
-    @staticmethod
-    def notAliveInstanceSamples():
-        return c_uint(DDS_ANY_SAMPLE_STATE | DDS_ANY_VIEW_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE)
+def new_instance_samples():
+    return c_uint(DDS_NOT_READ_SAMPLE_STATE | DDS_ALIVE_INSTANCE_STATE | DDS_NEW_VIEW_STATE)
+
+def not_alive_instance_samples():
+    return c_uint(DDS_ANY_SAMPLE_STATE | DDS_ANY_VIEW_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE)
 
 
 ###
 ### Built-in Key-Value type
 ###
 class DDSKeyValue(Structure):
-    _fields_ = [("key", c_char_p),
-                ("value", c_char_p)]
-
+    _fields_ = [('key', c_char_p),
+                ('value', c_char_p)]
 
 
 REQUESTED_DEADLINE_MISSED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
@@ -211,11 +209,13 @@ def trivial_on_liveliness_changed(e, s):
 
 
 def trivial_on_data_available(r):
-    Runtime.dispatchDataListener(c_void_p(r))
+    Runtime.dispatch_data_listener(c_void_p(r))
 
 
 def trivial_on_subscription_matched(e, s):
     print(">> trivial_on_subscription_matched")
+    Runtime.dispatch_subscription_matched_listener(e, s)
+
 
 
 def trivial_on_sample_lost(e, s):
@@ -234,8 +234,8 @@ class DDSReaderListener(Structure):
 
 class Participant:
     def __init__(self, did):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.did = did
         self.handle = c_void_p()
         self.rt.ddslib.dds_participant_create(byref(self.handle), did, None, None)
@@ -243,48 +243,48 @@ class Participant:
 
 class Publisher:
     def __init__(self, dp, policies):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.dp = dp
         self.policies = policies
         self.handle = c_void_p()
-        qos = self.rt.toPubSubQos(policies)
+        qos = self.rt.to_ps_qos(policies)
         self.rt.ddslib.dds_publisher_create(dp.handle, byref(self.handle), qos, None)
-        self.rt.releaseDDSQoS(qos)
+        self.rt.release_dds_qos(qos)
 
 
 class Subscriber:
     def __init__(self, dp, policies):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.dp = dp
         self.policies = policies
         self.handle = c_void_p()
-        qos = self.rt.toPubSubQos(policies)
+        qos = self.rt.to_ps_qos(policies)
         self.rt.ddslib.dds_subscriber_create(dp.handle, byref(self.handle), qos, None)
-        self.rt.releaseDDSQoS(qos)
+        self.rt.release_dds_qos(qos)
 
 
 class FlexyTopic:
     def __init__(self, dp, name, keygen, qos):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.keygen = keygen
-        ts = self.rt.getKeyValueTypeSupport()
+        ts = self.rt.get_key_value_type_support()
         self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
 
 
 class Topic:
     def __init__(self, dp, topic_name, type_support, data_type, qos):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.topic_name = topic_name
         self.type_support = type_support
         self.data_type = data_type
         self.qos = qos
 
         self.handle = c_void_p()
-        self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name, qos, None)
+        self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name.encode(), qos, None)
 
 
 class FlexyWriter:
@@ -295,7 +295,7 @@ class FlexyWriter:
     def write(self, s):
         key = jsonpickle.encode(self.keygen(s))
         value = jsonpickle.encode(s)
-        x = DDSKeyValue(key, value)
+        x = DDSKeyValue(key.encode(), value.encode())
         self.writer.write(x)
 
     def write_all(self, xs):
@@ -305,14 +305,14 @@ class FlexyWriter:
 
 class DataWriter:
     def __init__(self, pub, topic, policies):
-        global theRuntime
-        self.rt = theRuntime
+        global the_runtime
+        self.rt = the_runtime
         self.pub = pub
         self.topic = topic
         self.policies = policies
         self.handle = c_void_p()
 
-        qos = self.rt.toRWQos(policies)
+        qos = self.rt.to_rw_qos(policies)
         self.rt.ddslib.dds_writer_create(pub.handle, byref(self.handle), topic.handle, qos, None)
 
     def write(self, s):
@@ -320,13 +320,13 @@ class DataWriter:
 
 
 class FlexyReader:
-    def __init__(self, sub, flexy_topic, policies, flexyDataListener):
-        global theRuntime
-        self.rt = theRuntime
+    def __init__(self, sub, flexy_topic, policies, flexy_data_listener):
+        global the_runtime
+        self.rt = the_runtime
         self.sub = sub
         self.flexy_topic = flexy_topic
         self.policies = policies
-        self.dataListener = flexyDataListener
+        self.data_listener = flexy_data_listener
 
         holder = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                    self.rt.on_requested_incompatible_qos,
@@ -337,15 +337,36 @@ class FlexyReader:
                                    self.rt.on_sample_lost)
         self.handle = c_void_p()
         topic = self.flexy_topic.topic
-        qos = self.rt.toRWQos(policies)
+        qos = self.rt.to_rw_qos(policies)
         self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(holder))
-        self.rt.registerDataListener(self.handle, self.handleData)
+        self.rt.register_data_listener(self.handle, self.__handle_data)
 
-    def handleData(self, r):
-        self.dataListener(self)
+    def on_data_available(self, fun):
+        self.data_listener = fun
+        self.rt.register_data_listener(self.handle, fun)
+
+    def on_subscription_matched(self, fun):
+        self.subsciption_listener = fun
+        self.rt.register_subscription_matched_listener(self.handle, self.__handle_sub_matched)
+
+    def on_liveliness_changed(self, fun):
+        self._liveliness_listener = fun
+        self.rt.register_liveliness_changed_listener(self.handle, self.__handle_liveliness_change)
+
+    def __handle_data(self, r):
+        self.data_listener(self)
+
+    def __handle_sub_matched(self, r, s):
+        self.subsciption_listener(self, s)
+
+    def __handle_liveliness_change(self, r, s):
+        self._liveliness_listener(self, s)
+
+    def read(self, selector):
+        return self.read_n(MAX_SAMPLES, selector)
 
 
-    def read(self, n, sampleSelector):
+    def read_n(self, n, sample_selector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
         info_len = n * 256  # 128 should be enough... but we keep it safe
@@ -353,18 +374,20 @@ class FlexyReader:
 
         info = cast(Info_t(), c_void_p)
 
-        SampleVec_t = c_void_p * n
-        samples = SampleVec_t()
-        nr = theRuntime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
-        data = []
+        samples = (c_void_p * n)()
+        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sample_selector)
 
-        for s in samples:
-            sp = cast(c_void_p(samples[0]), POINTER(self.flexy_topic.topic.data_type))
+        data = []
+        for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             data.append(jsonpickle.decode(sp[0].value))
 
         return data
 
-    def take(self, n, sampleSelector):
+    def take(self, selector):
+        return self.take_n(MAX_SAMPLES, selector)
+
+    def take_n(self, n, sample_selector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
         info_len = n * 256  # 128 should be enough... but we keep it safe
@@ -374,22 +397,23 @@ class FlexyReader:
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = theRuntime.ddslib.dds_take(self.handle, samples, n, info, sampleSelector)
+        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, info, sample_selector)
         data = []
-        for s in samples:
-            sp = cast(c_void_p(samples[0]), POINTER(self.flexy_topic.topic.data_type))
+
+        for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             data.append(jsonpickle.decode(sp[0].value))
 
         return data
 
 class DataReader:
-    def __init__(self, sub, topic, policies, dataListener):
-        global theRuntime
-        self.rt = theRuntime
+    def __init__(self, sub, topic, policies, data_listener):
+        global the_runtime
+        self.rt = the_runtime
         self.sub = sub
         self.topic = topic
         self.policies = policies
-        self.dataListener = dataListener
+        self.data_listener = data_listener
 
         holder = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                    self.rt.on_requested_incompatible_qos,
@@ -399,14 +423,26 @@ class DataReader:
                                    self.rt.on_subscription_matched,
                                    self.rt.on_sample_lost)
         self.handle = c_void_p()
-        qos = self.rt.toRWQos(policies)
+        qos = self.rt.to_rw_qos(policies)
         self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(holder))
-        self.rt.registerDataListener(self.handle, self.handleData)
+        self.rt.register_data_listener(self.handle, self.handle_data)
 
-    def handleData(self, r):
-        self.dataListener(self)
+    def on_data_available(self, fun):
+        self.rt.register_data_listener(self.handle, fun)
 
-    def take(self, n, sampleSelector):
+    def on_subscription_matched(self, fun):
+        self.rt.register_subscription_matched_listener(self.handle, fun)
+
+    def on_liveliness_changed(self, fun):
+        self.rt.register_liveliness_changed_listener(self.handle, fun)
+
+    def handle_data(self, r):
+        self.data_listener(self)
+
+    def take(self, selector):
+        return self.take_n(MAX_SAMPLES, selector)
+
+    def take_n(self, n, sampleSelector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
         info_len = n * 256  # 128 should be enough... but we keep it safe
@@ -416,15 +452,19 @@ class DataReader:
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = theRuntime.ddslib.dds_take(self.handle, samples, n, info, sampleSelector)
+        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, info, sampleSelector)
         data = []
-        for s in samples:
-            sp = cast(c_void_p(samples[0]), POINTER(self.topic.data_type))
+        for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
             data.append(sp[0])
+
 
         return data
 
-    def read(self, n, sampleSelector):
+    def read(self, selector):
+        return self.read_n(MAX_SAMPLES, selector)
+
+    def read_n(self, n, sampleSelector):
         # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
         #        I'll fix it once proper support for SampleInfo will be in place
         info_len = n * 256 # 128 should be enough... but we keep it safe
@@ -434,10 +474,10 @@ class DataReader:
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = theRuntime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
+        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
         data = []
-        for s in samples:
-            sp = cast(c_void_p(samples[0]), POINTER(self.topic.data_type))
+        for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
             data.append(sp[0])
 
         return data
@@ -446,14 +486,18 @@ class DataReader:
 class Error(Exception):
     pass
 
+
 class Runtime:
 
     @staticmethod
     def getRuntime():
-        return theRuntime
+        return the_runtime
     def __init__(self):
 
         self.dataListenerMap = {}
+        self.subscriptionMatchedListenerMap = {}
+        self.livelinessChangeListenerMap = {}
+
 
         self.ddslib = CDLL(lite_lib_path)
         self.bitypes = CDLL(bit_lib_path)
@@ -466,7 +510,7 @@ class Runtime:
         self.on_requested_incompatible_qos = REQUESTED_INCOMPATIBLE_QOS_PROTO(trivial_on_requested_incompatible_qos)
         self.on_sample_rejected = SAMPLE_REJECTED_PROTO(trivial_on_sample_rejected)
         self.on_liveliness_changed = LIVELINESS_CHANGED_PROTO(trivial_on_liveliness_changed)
-        self.on_data_available =  DATA_AVAILABLE_PROTO(trivial_on_data_available)
+        self.on_data_available = DATA_AVAILABLE_PROTO(trivial_on_data_available)
         self.on_subscription_matched = SUBSCRIPTION_MATCHED_PROTO(trivial_on_subscription_matched)
         self.on_sample_lost = SAMPLE_LOST_PROTO(trivial_on_sample_lost)
 
@@ -491,36 +535,68 @@ class Runtime:
         self.ddslib.dds_qset_ownership_strength.restype = None
         self.ddslib.dds_qset_ownership_strength.argtypes = [c_void_p, c_uint32]
 
+        self.ddslib.dds_read.restype = c_int
+        # the_runtime.ddslib.dds_read.argtypes = []
+        # //         rs = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sample_selector)
 
-        global theRuntime
-        theRuntime = self
 
-    def registerDataListener(self, handle, fun):
+        self.ddslib.dds_take.restype = c_int
+        # the_runtime.ddslib.dds_take.argtypes = []
+
+
+        global the_runtime
+        the_runtime = self
+
+    def register_data_listener(self, handle, fun):
         h = repr(handle)
         self.dataListenerMap[h] = fun
 
-    @staticmethod
-    def dispatchDataListener(handle):
+    def register_liveliness_changed_listener(self, handle, fun):
         h = repr(handle)
-        global theRuntime
-        if h in theRuntime.dataListenerMap:
-            fun = theRuntime.dataListenerMap[h]
+        self.livelinessChangeListenerMap[h] = fun
+
+    def register_subscription_matched_listener(self, handle, fun):
+        h = repr(handle)
+        self.subscriptionMatchedListenerMap[h] = fun
+
+    @staticmethod
+    def dispatch_data_listener(handle):
+        h = repr(handle)
+        global the_runtime
+        if h in the_runtime.dataListenerMap:
+            fun = the_runtime.dataListenerMap[h]
             fun(handle)
         else:
             print ('warning>> Trying to dispatch listener for unknown reader {0}'.format(handle))
 
+    @staticmethod
+    def dispatch_subscription_matched_listener(handle, s):
+        h = repr(handle)
+        global the_runtime
+        if h in the_runtime.subscriptionMatchedListenerMap:
+            fun = the_runtime.subscriptionMatchedListenerMap[h]
+            fun(handle,s)
 
-    def getKeyValueTypeSupport(self):
+    @staticmethod
+    def dispatch_liveliness_changed_listener(handle, s):
+        h = repr(handle)
+        global the_runtime
+        if h in the_runtime.livelinessChangeListenerMap:
+            fun = the_runtime.livelinessChangeListenerMap[h]
+            fun(handle,s)
+
+
+    def get_key_value_type_support(self):
         return self.bitypes.dython_bit_KDython_desc
 
-    def getSimpleValueTypeSupport(self):
+    def get_simple_value_type_support(self):
         return self.bitypes.dython_bit_Dython_desc
 
-    def toRWQos(self, ps):
+    def to_rw_qos(self, ps):
         if ps == None:
             return None
 
-        qos = self.createDDSQoS()
+        qos = self.create_dds_qos()
 
         for p in ps:
             if p.id == DDS_DURABILITY_PERSISTENT:
@@ -548,28 +624,27 @@ class Runtime:
             return qos
 
 
-    def toPubSubQos(self, ps):
+    def to_ps_qos(self, ps):
         if ps == None:
             return None
 
-        qos = self.createDDSQoS()
-        xs = filter(lambda p: p.id == DDS_PARTITION_QOS_POLICY_ID, ps)
+        qos = self.create_dds_qos()
+        xs = list(filter(lambda p: p.id == DDS_PARTITION_QOS_POLICY_ID, ps))
 
         if len(xs) > 0:
             policy = xs[0]
             L = len(policy.partitions)
             vec = (c_char_p * L)()
-            vec[:] = policy.partitions
+            sbuf = list(map(lambda s: s.encode(), policy.partitions))
+            vec[:] = sbuf
             self.ddslib.dds_qset_partition (qos, c_uint32(L), vec)
         return qos
 
-
-    def createDDSQoS(self):
+    def create_dds_qos(self):
         return c_void_p(self.ddslib.dds_qos_create())
 
-    def releaseDDSQoS(self, qos):
+    def release_dds_qos(self, qos):
         self.ddslib.dds_qos_delete(qos)
 
     def close(self):
         self.ddslib.dds_fini()
-
