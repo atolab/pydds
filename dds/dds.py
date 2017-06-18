@@ -1,14 +1,25 @@
 from ctypes import *
 import os
 import jsonpickle
+import platform
 
 
 __author__ = 'Angelo Corsaro'
 
+def getLibExtension():
+    system = platform.system()
+    if system == 'Linux':
+        return '.so'
+    elif system == 'Darwin':
+        return '.dylib'
+    else:
+        return '.dll'
+
 
 #@TODO: Fix this to go and look for the right library...
-lite_lib = 'libdds.dylib'
-bit_lib = 'libdython.dylib'
+lite_lib = 'libdds' + getLibExtension()
+bit_lib = 'libdython' + getLibExtension()
+
 lite_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + lite_lib
 # Yes, this assumes that the Python BIT should be under the lite lib... If not there copy it!
 bit_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + bit_lib
