@@ -100,6 +100,9 @@ DDS_LIVELINESS_AUTOMATIC = 0
 DDS_LIVELINESS_MANUAL_BY_PARTICIPANT = 1
 DDS_LIVELINESS_MANUAL_BY_TOPIC = 2
 
+class TopicType(object):
+    def key(self): None
+
 
 class Policy:
     def __init__(self, id):
