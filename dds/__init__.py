@@ -1,13 +1,9 @@
-#from dds import *
-
 __author__ = 'Angelo Corsaro'
 
 from ctypes import *
 import os
 import jsonpickle
 import platform
-
-__author__ = 'Angelo Corsaro'
 
 
 def getLibExtension():
@@ -308,6 +304,20 @@ class FlexyTopic:
         self.keygen = keygen
         ts = self.rt.get_key_value_type_support()
         self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
+
+    def __init__(self, dp, name, qos):
+        global the_runtime
+        self.rt = the_runtime
+        self.keygen = lambda x: x.key()
+        ts = self.rt.get_key_value_type_support()
+        self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
+
+    def __init__(self, dp, name):
+        global the_runtime
+        self.rt = the_runtime
+        self.keygen = lambda x: x.key()
+        ts = self.rt.get_key_value_type_support()
+        self.topic = Topic(dp, name, ts, DDSKeyValue, None)
 
 
 class Topic:
