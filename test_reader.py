@@ -4,7 +4,7 @@ from dds.dds import *
 import  time
 
 def onDataAvailable(r):
-    samples = r.read(1, new_samples())
+    samples = r.read(new_samples())
     for s in samples:
         print ('reader>> ({0}, {1})'.format(s.key, s.value))
 
