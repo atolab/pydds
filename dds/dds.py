@@ -355,7 +355,7 @@ class FlexyReader:
         self.policies = policies
         self.data_listener = flexy_data_listener
 
-        holder = DDSReaderListener(self.rt.on_requested_deadline_missed,
+        self.listener = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                    self.rt.on_requested_incompatible_qos,
                                    self.rt.on_sample_rejected,
                                    self.rt.on_liveliness_changed,
@@ -365,7 +365,7 @@ class FlexyReader:
         self.handle = c_void_p()
         topic = self.flexy_topic.topic
         qos = self.rt.to_rw_qos(policies)
-        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(holder))
+        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(self.listener ))
         self.rt.register_data_listener(self.handle, self.__handle_data)
 
     def on_data_available(self, fun):
@@ -446,7 +446,7 @@ class DataReader:
         self.policies = policies
         self.data_listener = data_listener
 
-        holder = DDSReaderListener(self.rt.on_requested_deadline_missed,
+        self.listener = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                    self.rt.on_requested_incompatible_qos,
                                    self.rt.on_sample_rejected,
                                    self.rt.on_liveliness_changed,
@@ -455,7 +455,7 @@ class DataReader:
                                    self.rt.on_sample_lost)
         self.handle = c_void_p()
         qos = self.rt.to_rw_qos(policies)
-        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(holder))
+        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(self.listener))
         self.rt.register_data_listener(self.handle, self.handle_data)
 
     def on_data_available(self, fun):
