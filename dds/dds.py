@@ -17,12 +17,13 @@ def getLibExtension():
 
 
 #@TODO: Fix this to go and look for the right library...
-lite_lib = 'libdds' + getLibExtension()
+ospl_lib = 'libdcpsc99' + getLibExtension()
 bit_lib = 'libdython' + getLibExtension()
 
-lite_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + lite_lib
-# Yes, this assumes that the Python BIT should be under the lite lib... If not there copy it!
-bit_lib_path = os.environ['LITE_HOME'] + os.sep + 'lib' + os.sep + os.environ['LITE_TARGET'] + os.sep + bit_lib
+ospl_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + ospl_lib
+
+# Yes, this assumes that the Python BIT should be under the OSPL lib... If not there copy it!
+ospl_bit_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + bit_lib
 
 # Limits and Constants
 MAX_SAMPLES = 256
@@ -192,6 +193,21 @@ class DDSKeyValue(Structure):
                 ('value', c_char_p)]
 
 
+###
+### These types are used for binary payload
+###
+class DDSSequence(Structure):
+    _fields_ = [('_maximum', c_uint32),
+                ('_length', c_uint32),
+                ('_buffer', c_char_p),
+                ('_release', c_bool)]
+
+
+class DDSKeyBValue(Structure):
+    _fields_ = [('key', c_char_p),
+                ('value', DDSSequence)]
+
+        
 REQUESTED_DEADLINE_MISSED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
 REQUESTED_INCOMPATIBLE_QOS_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
 SAMPLE_REJECTED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
@@ -417,6 +433,10 @@ class FlexyReader:
 
         return data
 
+    def wait_history(self, timeout):
+        timeout = 6*10^10;
+        return the_runtime.ddslib.dds_reader_wait_for_historical_data(self.handle, timeout)
+
 class DataReader:
     def __init__(self, sub, topic, policies, data_listener):
         global the_runtime
@@ -493,6 +513,9 @@ class DataReader:
 
         return data
 
+    def wait_history(self, timeout):
+        timeout = 6*10^10 # One minute
+        return the_runtime.ddslib.dds_reader_wait_for_historical_data(self.handle, timeout)
 
 class Error(Exception):
     pass
@@ -510,8 +533,8 @@ class Runtime:
         self.livelinessChangeListenerMap = {}
 
 
-        self.ddslib = CDLL(lite_lib_path)
-        self.bitypes = CDLL(bit_lib_path)
+        self.ddslib = CDLL(ospl_lib_path)
+        self.bitypes = CDLL(ospl_bit_lib_path)
 
         self.ddslib.dds_init(0, None)
         self.kv_topic = None

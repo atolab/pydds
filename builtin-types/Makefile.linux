@@ -1,0 +1,15 @@
+INCLUDE_DIRS = \
+	     -I $(OSPL_HOME)/include \
+	     -I $(OSPL_HOME)/include/sys \
+	     -I	$(OSPL_HOME)/include/dcps/C/SAC \
+	     -I $(OSPL_HOME)/include/dcps/C/C99
+
+LD_DIRS = -L $(OSPL_HOME)/lib
+
+LD_LIBS = -lddskernel -ldcpsc99 -ldcpssac
+
+TARGET=libdython.so
+
+all:
+    idlpp -l c99 -d gen idl/dython.idl
+	$(CC) -o $(TARGET) -shared $(INCLUDE_DIRS) $(LD_DIRS) $(LD_LIBS) gen/*.c

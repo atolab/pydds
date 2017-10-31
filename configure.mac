@@ -1,0 +1,11 @@
+# -*-Makefile-*-
+#!/bin/bash
+
+PDDS_LIB=libdython.dylib
+
+pushd &> /dev/null
+cd builtin-types
+make -f Makefile.macos
+cp ${PDDS_LIB} ${OSPL_HOME}/lib
+popd &> /dev/null
+
