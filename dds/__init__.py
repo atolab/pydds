@@ -5,7 +5,6 @@ import os
 import jsonpickle
 import platform
 
-
 def getLibExtension():
     system = platform.system()
     if system == 'Linux':
@@ -101,7 +100,7 @@ DDS_LIVELINESS_MANUAL_BY_TOPIC = 2
 
 
 class TopicType(object):
-    def key(self): None
+    def gen_key(self): None
 
 
 class Policy:
@@ -220,9 +219,54 @@ class DDSSequence(Structure):
                 ('_release', c_bool)]
 
 
+###
+### Built-in key-value type
+###
 class DDSKeyBValue(Structure):
     _fields_ = [('key', c_char_p),
                 ('value', DDSSequence)]
+
+
+###
+### DDS Sample Info
+###
+class SampleInfo(Structure):
+    _fields_ = [('sample_state', c_uint),
+                ('view_state', c_uint),
+                ('instance_state', c_uint),
+                ('valid_data', c_bool),
+                ('source_timestamp', c_int64),
+                ('instance_handle', c_uint64),
+                ('pubblication_handle', c_uint64),
+                ('disposed_generation_count', c_uint32),
+                ('no_writer_generation_count', c_uint32),
+                ('sample_rank', c_uint32),
+                ('generation_rank', c_uint32),
+                ('absolute_generation_rank', c_uint32),
+                ('reception_timestamp', c_int64)]
+
+
+    def is_new_sample(self):
+        return self.sample_state == DDS_NOT_READ_SAMPLE_STATE
+
+    def is_read_sample(self):
+        return not self.is_new_sample()
+
+    def is_new_instance(self):
+        return self.view_state == DDS_NEW_VIEW_STATE
+
+    def is_alive_instance(self):
+        return self.instance_state == DDS_ALIVE_INSTANCE_STATE
+
+    def is_disposed_instance(self):
+        return self.instance_state == DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE
+
+    def is_not_alive_instance(self):
+        return self.instance_state == DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE
+
+
+
+
 
 
 REQUESTED_DEADLINE_MISSED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
@@ -295,7 +339,6 @@ class Publisher:
         self.rt.ddslib.dds_publisher_create(dp.handle, byref(self.handle), qos, None)
         self.rt.release_dds_qos(qos)
 
-
 class Subscriber:
     def __init__(self, dp, policies):
         global the_runtime
@@ -319,17 +362,19 @@ class FlexyTopic:
     def __init__(self, dp, name, qos):
         global the_runtime
         self.rt = the_runtime
-        self.keygen = lambda x: x.key()
+        self.keygen = lambda x: x.gen_key()
         ts = self.rt.get_key_value_type_support()
         self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
 
     def __init__(self, dp, name):
         global the_runtime
         self.rt = the_runtime
-        self.keygen = lambda x: x.key()
+        self.keygen = lambda x: x.gen_key()
         ts = self.rt.get_key_value_type_support()
         self.topic = Topic(dp, name, ts, DDSKeyValue, None)
 
+    def gen_key(self, s):
+        return self.keygen(s)
 
 class Topic:
     def __init__(self, dp, topic_name, type_support, data_type, qos):
@@ -347,10 +392,12 @@ class Topic:
 class FlexyWriter:
     def __init__(self, pub, flexy_topic, policies):
         self.writer = DataWriter(pub, flexy_topic.topic, policies)
-        self.keygen = flexy_topic.keygen
+        self.keygen = flexy_topic.gen_key
+
 
     def write(self, s):
-        key = jsonpickle.encode(self.keygen(s))
+        gk = self.keygen(s)
+        key = jsonpickle.encode(gk)
         value = jsonpickle.encode(s)
         x = DDSKeyValue(key.encode(), value.encode())
         self.writer.write(x)
@@ -380,6 +427,7 @@ class FlexyReader:
     def __init__(self, sub, flexy_topic, policies, flexy_data_listener):
         global the_runtime
         self.rt = the_runtime
+        self.sub = sub
         self.sub = sub
         self.flexy_topic = flexy_topic
         self.policies = policies
@@ -423,44 +471,35 @@ class FlexyReader:
         return self.read_n(MAX_SAMPLES, selector)
 
     def read_n(self, n, sample_selector):
-        # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
-        #        I'll fix it once proper support for SampleInfo will be in place
-        info_len = n * 256  # 128 should be enough... but we keep it safe
-        Info_t = c_byte * info_len
-
-        info = cast(Info_t(), c_void_p)
-
+        ivec = (SampleInfo * n)()
+        infos = cast(ivec, POINTER(SampleInfo))
         samples = (c_void_p * n)()
-        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sample_selector)
+        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sample_selector)
 
         data = []
         for i in range(nr):
             sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             data.append(jsonpickle.decode(sp[0].value))
 
-        return data
+        return zip(data, infos)
 
     def take(self, selector):
         return self.take_n(MAX_SAMPLES, selector)
 
     def take_n(self, n, sample_selector):
-        # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
-        #        I'll fix it once proper support for SampleInfo will be in place
-        info_len = n * 256  # 128 should be enough... but we keep it safe
-        Info_t = c_byte * info_len
-
-        info = cast(Info_t(), c_void_p)
+        ivec = (SampleInfo * n)()
+        infos = cast(ivec, POINTER(SampleInfo))
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, info, sample_selector)
+        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, infos, sample_selector)
         data = []
 
         for i in range(nr):
             sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             data.append(jsonpickle.decode(sp[0].value))
 
-        return data
+        return zip(data, infos)
 
     def wait_history(self, timeout):
         timeout = 6 * 10 ^ 10;
@@ -504,43 +543,35 @@ class DataReader:
         return self.take_n(MAX_SAMPLES, selector)
 
     def take_n(self, n, sampleSelector):
-        # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
-        #        I'll fix it once proper support for SampleInfo will be in place
-        info_len = n * 256  # 128 should be enough... but we keep it safe
-        Info_t = c_byte * info_len
-
-        info = cast(Info_t(), c_void_p)
+        ivec = (SampleInfo * n)()
+        infos = cast(ivec, POINTER(SampleInfo))
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, info, sampleSelector)
+        nr = the_runtime.ddslib.dds_take(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
             sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
             data.append(sp[0])
 
-        return data
+        return zip(data, infos)
 
     def read(self, selector):
         return self.read_n(MAX_SAMPLES, selector)
 
     def read_n(self, n, sampleSelector):
-        # @TODO: This is a dirty hack... It is but I am not ashamed by it :-P
-        #        I'll fix it once proper support for SampleInfo will be in place
-        info_len = n * 256  # 128 should be enough... but we keep it safe
-        Info_t = c_byte * info_len
-
-        info = cast(Info_t(), c_void_p)
+        ivec = (SampleInfo * n)()
+        infos = cast(ivec, POINTER(SampleInfo))
 
         SampleVec_t = c_void_p * n
         samples = SampleVec_t()
-        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sampleSelector)
+        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
             sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
             data.append(sp[0])
 
-        return data
+        return zip(data, infos)
 
     def wait_history(self, timeout):
         timeout = 6 * 10 ^ 10  # One minute
@@ -553,8 +584,14 @@ class Error(Exception):
 
 class Runtime:
     @staticmethod
-    def getRuntime():
-        return the_runtime
+    def get_runtime():
+        global the_runtime
+        if the_runtime != None:
+            return the_runtime
+        else:
+            the_runtime = Runtime()
+            return the_runtime
+
 
     def __init__(self):
 

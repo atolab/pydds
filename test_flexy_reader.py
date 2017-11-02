@@ -10,7 +10,7 @@ class VehiclePosition:
         self.y = 0
         self.key_ = cid
 
-    def key(self):
+    def gen_key(self):
         return self.key_
 
     def moveTo(self, x, y):
@@ -27,7 +27,7 @@ class VehiclePosition:
 def onDataAvailable(r):
     samples = r.read(all_samples())
     for s in samples:
-        print ('reader>> {0})'.format(s))
+        print ('reader>> {0})'.format(s[0]))
 
 def testDynaTypes():
     rt = Runtime()

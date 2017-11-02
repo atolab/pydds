@@ -11,7 +11,7 @@ class VehiclePosition:
         self.y = 0
         self.key_ = cid
 
-    def key(self):
+    def gen_key(self):
         return self.key_
 
     def moveTo(self, x, y):
