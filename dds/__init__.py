@@ -402,9 +402,13 @@ class FlexyWriter:
         x = DDSKeyValue(key.encode(), value.encode())
         self.writer.write(x)
 
+
     def write_all(self, xs):
         for x in xs:
             self.write(x)
+
+    def dispose_instance(self, s):
+        self.writer.dispose_instance(s);
 
 
 class DataWriter:
@@ -421,6 +425,9 @@ class DataWriter:
 
     def write(self, s):
         self.rt.ddslib.dds_write(self.handle, byref(s))
+
+    def dispose_instance(self, s):
+        self.rt.ddslib.dds_instance_dispose	(self.handle, byref(s))
 
 
 class FlexyReader:
