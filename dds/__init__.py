@@ -168,6 +168,17 @@ class SharedOwnership(Policy):
         Policy.__init__(self, DDS_OWNERSHIP_SHARED)
 
 
+class ManualInstanceDispose(Policy):
+    def __init__(self):
+        Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
+        self.auto_dispose = False
+
+class AutoInstanceDispose(Policy):
+    def __init__(self):
+        Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
+        self.auto_dispose = True
+
+
 the_runtime = None
 
 
@@ -671,8 +682,10 @@ class Runtime:
             elif p.id == DDS_OWNERSHIP_EXCLUSIVE:
                 self.ddslib.dds_qset_ownership(qos, DDS_OWNERSHIP_EXCLUSIVE)
                 self.ddslib.dds_qset_ownership_strength(qos, p.strength)
-
+            elif p.id == DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID:
+                self.ddslib.dds_qset_writer_data_lifecycle(qos, p.auto_dispose)
             return qos
+
 
     def to_ps_qos(self, ps):
         if ps == None:
