@@ -486,7 +486,7 @@ class FlexyReader:
         data = []
         for i in range(nr):
             sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-            data.append(jsonpickle.decode(sp[0].value))
+            data.append(jsonpickle.decode(str(sp[0].value)))
 
         return zip(data, infos)
 
