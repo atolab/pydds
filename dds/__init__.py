@@ -408,7 +408,11 @@ class FlexyWriter:
             self.write(x)
 
     def dispose_instance(self, s):
-        self.writer.dispose_instance(s);
+        gk = self.keygen(s)
+        key = jsonpickle.encode(gk)
+        value = jsonpickle.encode(s)
+        x = DDSKeyValue(key.encode(), value.encode())
+        self.writer.dispose_instance(x)
 
 
 class DataWriter:
@@ -484,13 +488,15 @@ class FlexyReader:
 
         data = []
         for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             if infos[i].valid_data:
-                sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
                 v = sp[0].value.decode(encoding='UTF-8')
                 data.append(jsonpickle.decode(v))
             else:
-                print(">>> FlexyReader::read_n: Received invalid data...")
-                data.append(None)
+                k = sp[0].key.decode(encoding='UTF-8')
+                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
+                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
+                data.append(v)
 
         return zip(data, infos)
 
@@ -507,13 +513,16 @@ class FlexyReader:
         data = []
 
         for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             if infos[i].valid_data:
-                sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
                 v = sp[0].value.decode(encoding='UTF-8')
                 data.append(jsonpickle.decode(v))
             else:
-                print(">>> FlexyReader::read_n: Received invalid data...")
-                data.append(None)
+                k = sp[0].key.decode(encoding='UTF-8')
+                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
+                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
+                data.append(v)
+
 
         return zip(data, infos)
 
@@ -567,12 +576,16 @@ class DataReader:
         nr = the_runtime.ddslib.dds_take(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             if infos[i].valid_data:
-                sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-                data.append(sp[0].value)
+                v = sp[0].value.decode(encoding='UTF-8')
+                data.append(jsonpickle.decode(v))
             else:
-                print(">>> FlexyReader::read_n: Received invalid data...")
-                data.append(None)
+                k = sp[0].key.decode(encoding='UTF-8')
+                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
+                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
+                data.append(v)
+
 
         return zip(data, infos)
 
@@ -588,11 +601,15 @@ class DataReader:
         nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
+            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
             if infos[i].valid_data:
-                sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
-                data.append(sp[0])
+                v = sp[0].value.decode(encoding='UTF-8')
+                data.append(jsonpickle.decode(v))
             else:
-                data.append(None)
+                k = sp[0].key.decode(encoding='UTF-8')
+                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
+                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
+                data.append(v)
 
         return zip(data, infos)
 
@@ -666,6 +683,11 @@ class Runtime:
         self.ddslib.dds_take.restype = c_int
         # the_runtime.ddslib.dds_take.argtypes = []
 
+        self.ddslib.dds_instance_dispose.restype = c_uint
+        self.ddslib.dds_instance_dispose.argtype = [c_uint64, c_void_p]
+
+        self.ddslib.dds_write.restype = c_uint
+        self.ddslib.dds_write.argtype = [c_uint64, c_void_p]
 
         global the_runtime
         the_runtime = self
