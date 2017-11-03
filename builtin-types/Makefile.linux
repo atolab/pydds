@@ -10,6 +10,8 @@ LD_LIBS = -lddskernel -ldcpsc99 -ldcpssac
 
 TARGET=libdython.so
 
+# idlpp -l c99 -d gen idl/dython.idl
+
 all:
-    idlpp -l c99 -d gen idl/dython.idl
-	$(CC) -o $(TARGET) -shared $(INCLUDE_DIRS) $(LD_DIRS) $(LD_LIBS) gen/*.c
+
+	clang -o $(TARGET) -fPIC -shared $(INCLUDE_DIRS) $(LD_DIRS) $(LD_LIBS) gen/*.c

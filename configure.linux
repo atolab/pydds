@@ -1,0 +1,11 @@
+# -*-Makefile-*-
+#!/bin/bash
+
+PDDS_LIB=libdython.so
+
+pushd &> /dev/null
+cd builtin-types
+make -f Makefile.linux
+cp ${PDDS_LIB} ${OSPL_HOME}/lib
+popd &> /dev/null
+
