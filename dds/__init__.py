@@ -486,7 +486,8 @@ class FlexyReader:
         for i in range(nr):
             if infos[i].valid_data:
                 sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-                data.append(jsonpickle.decode(sp[0].value))
+                v = sp[0].value.decode(encoding='UTF-8')
+                data.append(jsonpickle.decode(v))
             else:
                 print(">>> FlexyReader::read_n: Received invalid data...")
                 data.append(None)
@@ -508,7 +509,8 @@ class FlexyReader:
         for i in range(nr):
             if infos[i].valid_data:
                 sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-                data.append(jsonpickle.decode(sp[0].value))
+                v = sp[0].value.decode(encoding='UTF-8')
+                data.append(jsonpickle.decode(v))
             else:
                 print(">>> FlexyReader::read_n: Received invalid data...")
                 data.append(None)
@@ -567,7 +569,7 @@ class DataReader:
         for i in range(nr):
             if infos[i].valid_data:
                 sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-                data.append(jsonpickle.decode(sp[0].value))
+                data.append(sp[0].value)
             else:
                 print(">>> FlexyReader::read_n: Received invalid data...")
                 data.append(None)
@@ -586,8 +588,11 @@ class DataReader:
         nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
-            sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
-            data.append(sp[0])
+            if infos[i].valid_data:
+                sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
+                data.append(sp[0])
+            else:
+                data.append(None)
 
         return zip(data, infos)
 
