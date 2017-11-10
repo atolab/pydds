@@ -5,7 +5,8 @@ import os
 import jsonpickle
 import platform
 
-def getLibExtension():
+
+def get_lib_ext():
     system = platform.system()
     if system == 'Linux':
         return '.so'
@@ -16,8 +17,8 @@ def getLibExtension():
 
 
 # @TODO: Fix this to go and look for the right library...
-ospl_lib = 'libdcpsc99' + getLibExtension()
-bit_lib = 'libdython' + getLibExtension()
+ospl_lib = 'libdcpsc99' + get_lib_ext()
+bit_lib = 'libdython' + get_lib_ext()
 
 ospl_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + ospl_lib
 
@@ -27,8 +28,8 @@ ospl_bit_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + bit_lib
 # Limits and Constants
 MAX_SAMPLES = 256
 
-#############################################################################
-### Statuses
+#
+#  Statuses
 DDS_READ_SAMPLE_STATE = 1
 DDS_NOT_READ_SAMPLE_STATE = 2
 DDS_ANY_SAMPLE_STATE = DDS_READ_SAMPLE_STATE | DDS_NOT_READ_SAMPLE_STATE
@@ -39,12 +40,11 @@ DDS_ANY_VIEW_STATE = DDS_NEW_VIEW_STATE | DDS_NOT_NEW_VIEW_STATE
 DDS_ALIVE_INSTANCE_STATE = 16
 DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE = 32
 DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE = 64
-DDS_ANY_INSTANCE_STATE = DDS_ALIVE_INSTANCE_STATE | DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE
+DDS_ANY_INSTANCE_STATE =  DDS_ALIVE_INSTANCE_STATE | DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE
 
 DDS_ANY_STATE = DDS_ANY_SAMPLE_STATE | DDS_ANY_VIEW_STATE | DDS_ANY_INSTANCE_STATE
 
-#############################################################################
-## QoS IDs
+#  QoS IDs
 DDS_INVALID_QOS_POLICY_ID = 0
 DDS_USERDATA_QOS_POLICY_ID = 1
 DDS_DURABILITY_QOS_POLICY_ID = 2
@@ -69,28 +69,28 @@ DDS_TRANSPORTPRIORITY_QOS_POLICY_ID = 20
 DDS_LIFESPAN_QOS_POLICY_ID = 21
 DDS_DURABILITYSERVICE_QOS_POLICY_ID = 22
 
-#############################################################################
-#### QoS Kinds
+#
+# QoS Kinds
 
-### Durability
+# Durability
 DDS_DURABILITY_VOLATILE = 0
 DDS_DURABILITY_TRANSIENT_LOCAL = 1
 DDS_DURABILITY_TRANSIENT = 2
 DDS_DURABILITY_PERSISTENT = 3
 
-### History
+# History
 DDS_HISTORY_KEEP_LAST = 0
 DDS_HISTORY_KEEP_ALL = 1
 
-### Ownership
+# Ownership
 DDS_OWNERSHIP_SHARED = 0
 DDS_OWNERSHIP_EXCLUSIVE = 1
 
-### Reliability
+# Reliability
 DDS_RELIABILITY_BEST_EFFORT = 0
 DDS_RELIABILITY_RELIABLE = 1
 
-### Dest Order
+# Dest Order
 DDS_DESTINATIONORDER_BY_RECEPTION_TIMESTAMP = 0
 DDS_DESTINATIONORDER_BY_SOURCE_TIMESTAMP = 1
 
@@ -183,6 +183,7 @@ class ManualInstanceDispose(Policy):
         Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
         self.auto_dispose = False
 
+
 class AutoInstanceDispose(Policy):
     def __init__(self):
         Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
@@ -212,17 +213,17 @@ def not_alive_instance_samples():
     return c_uint(DDS_ANY_SAMPLE_STATE | DDS_ANY_VIEW_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE)
 
 
-###
-### Built-in Key-Value type
-###
+#
+# Built-in Key-Value type
+#
 class DDSKeyValue(Structure):
     _fields_ = [('key', c_char_p),
                 ('value', c_char_p)]
 
 
-###
-### These types are used for binary payload
-###
+#
+# These types are used for binary payload
+#
 class DDSSequence(Structure):
     _fields_ = [('_maximum', c_uint32),
                 ('_length', c_uint32),
@@ -230,17 +231,17 @@ class DDSSequence(Structure):
                 ('_release', c_bool)]
 
 
-###
-### Built-in key-value type
-###
+#
+# Built-in key-value type
+#
 class DDSKeyBValue(Structure):
     _fields_ = [('key', c_char_p),
                 ('value', DDSSequence)]
 
 
-###
-### DDS Sample Info
-###
+#
+# DDS Sample Info
+#
 class SampleInfo(Structure):
     _fields_ = [('sample_state', c_uint),
                 ('view_state', c_uint),
@@ -255,7 +256,6 @@ class SampleInfo(Structure):
                 ('generation_rank', c_uint32),
                 ('absolute_generation_rank', c_uint32),
                 ('reception_timestamp', c_int64)]
-
 
     def is_new_sample(self):
         return self.sample_state == DDS_NOT_READ_SAMPLE_STATE
@@ -274,8 +274,6 @@ class SampleInfo(Structure):
 
     def is_not_alive_instance(self):
         return self.instance_state == DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE
-
-
 
 
 class KeyHolder(object):
@@ -353,6 +351,7 @@ class Publisher:
         self.rt.ddslib.dds_publisher_create(dp.handle, byref(self.handle), qos, None)
         self.rt.release_dds_qos(qos)
 
+
 class Subscriber:
     def __init__(self, dp, policies):
         global the_runtime
@@ -366,29 +365,20 @@ class Subscriber:
 
 
 class FlexyTopic:
-    def __init__(self, dp, name, keygen, qos):
+    def __init__(self, dp, name, keygen=None, qos=None):
         global the_runtime
         self.rt = the_runtime
-        self.keygen = keygen
+        if keygen is None:
+            self.keygen = lambda x: x.gen_key()
+        else:
+            self.keygen = keygen
+
         ts = self.rt.get_key_value_type_support()
         self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
-
-    def __init__(self, dp, name, qos):
-        global the_runtime
-        self.rt = the_runtime
-        self.keygen = lambda x: x.gen_key()
-        ts = self.rt.get_key_value_type_support()
-        self.topic = Topic(dp, name, ts, DDSKeyValue, qos)
-
-    def __init__(self, dp, name):
-        global the_runtime
-        self.rt = the_runtime
-        self.keygen = lambda x: x.gen_key()
-        ts = self.rt.get_key_value_type_support()
-        self.topic = Topic(dp, name, ts, DDSKeyValue, None)
 
     def gen_key(self, s):
         return self.keygen(s)
+
 
 class Topic:
     def __init__(self, dp, topic_name, type_support, data_type, qos):
@@ -408,14 +398,12 @@ class FlexyWriter:
         self.writer = DataWriter(pub, flexy_topic.topic, policies)
         self.keygen = flexy_topic.gen_key
 
-
     def write(self, s):
         gk = self.keygen(s)
         key = jsonpickle.encode(gk)
         value = jsonpickle.encode(s)
         x = DDSKeyValue(key.encode(), value.encode())
         self.writer.write(x)
-
 
     def write_all(self, xs):
         for x in xs:
@@ -445,7 +433,8 @@ class DataWriter:
         self.rt.ddslib.dds_write(self.handle, byref(s))
 
     def dispose_instance(self, s):
-        self.rt.ddslib.dds_instance_dispose	(self.handle, byref(s))
+        self.rt.ddslib.dds_instance_dispose(self.handle, byref(s))
+
 
 # The current waitset implementation has the limitation that can wait
 # on a single condition.
@@ -467,14 +456,14 @@ class WaitSet(object):
         pcs = cast(cs, c_void_p)
         s = self.rt.ddslib.dds_waitset_wait(self.handle, byref(pcs), 1, timeout)
         if s == 0:
-            # print(">>> Waitset.Wait: Timed-out!")
             return False
         else:
-            # print(">>> Waitset.Wait: triggered {0} conditions".format(s))
             return True
 
-def do_nothing(dr):
-    pass
+
+def do_nothing(a):
+    return a
+
 
 class FlexyReader:
     def __init__(self, sub, flexy_topic, policies, flexy_data_listener):
@@ -484,10 +473,13 @@ class FlexyReader:
         self.sub = sub
         self.flexy_topic = flexy_topic
         self.policies = policies
-        if flexy_data_listener == None:
+        if flexy_data_listener is None:
             self.data_listener = do_nothing
         else:
             self.data_listener = flexy_data_listener
+
+        self.subsciption_listener = None
+        self._liveliness_listener = None
 
         self.listener = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                           self.rt.on_requested_incompatible_qos,
@@ -540,7 +532,6 @@ class FlexyReader:
     def read(self, selector):
         return self.read_n(MAX_SAMPLES, selector)
 
-
     def sread_n(self, n, selector, timeout):
         if self.wait_for_data(selector, timeout):
             return self.read_n(n, selector)
@@ -561,7 +552,6 @@ class FlexyReader:
                 data.append(jsonpickle.decode(v))
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
-                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
                 data.append(KeyHolder(k))
 
         return zip(data, infos)
@@ -597,14 +587,11 @@ class FlexyReader:
                 data.append(jsonpickle.decode(v))
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
-                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
                 data.append(KeyHolder(k))
-
 
         return zip(data, infos)
 
     def wait_history(self, timeout):
-        timeout = 6 * 10 ^ 10;
         return the_runtime.ddslib.dds_reader_wait_for_historical_data(self.handle, timeout)
 
 
@@ -615,7 +602,7 @@ class DataReader:
         self.sub = sub
         self.topic = topic
         self.policies = policies
-        if data_listener == None:
+        if data_listener is None:
             self.data_listener = do_nothing
         else:
             self.data_listener = data_listener
@@ -675,15 +662,14 @@ class DataReader:
         nr = the_runtime.ddslib.dds_take(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
-            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
-            if infos[i].valid_data:
-                v = sp[0].value.decode(encoding='UTF-8')
-                data.append(jsonpickle.decode(v))
-            else:
-                k = sp[0].key.decode(encoding='UTF-8')
-                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                data.append(KeyHolder(k))
-
+            sp = cast(c_void_p(samples[i]), POINTER(self.topic.topic.data_type))
+            data.append(sp[0])
+            # if infos[i].valid_data:
+            #     # v = sp[0].value.decode(encoding='UTF-8')
+            #     data.append(sp[0])
+            # else:
+            #     # k = sp[0].key.decode(encoding='UTF-8')
+            #     data.append()
 
         return zip(data, infos)
 
@@ -711,19 +697,17 @@ class DataReader:
         nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sampleSelector)
         data = []
         for i in range(nr):
-            sp = cast(c_void_p(samples[i]), POINTER(self.flexy_topic.topic.data_type))
+            sp = cast(c_void_p(samples[i]), POINTER(self.topic.data_type))
             if infos[i].valid_data:
-                v = sp[0].value.decode(encoding='UTF-8')
-                data.append(jsonpickle.decode(v))
-            else:
-                k = sp[0].key.decode(encoding='UTF-8')
-                print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                data.append(KeyHolder(k))
+                # v = sp[0].value.decode(encoding='UTF-8')
+                data.append(sp[0])
+            # else:
+            #     k = sp[0].key.decode(encoding='UTF-8')
+            #     data.append(KeyHolder(k))
 
         return zip(data, infos)
 
     def wait_history(self, timeout):
-        timeout = 6 * 10 ^ 10  # One minute
         return the_runtime.ddslib.dds_reader_wait_for_historical_data(self.handle, timeout)
 
 
@@ -735,15 +719,13 @@ class Runtime:
     @staticmethod
     def get_runtime():
         global the_runtime
-        if the_runtime != None:
+        if the_runtime is not None:
             return the_runtime
         else:
             the_runtime = Runtime()
             return the_runtime
 
-
     def __init__(self):
-
         self.dataListenerMap = {}
         self.subscriptionMatchedListenerMap = {}
         self.livelinessChangeListenerMap = {}
@@ -763,6 +745,7 @@ class Runtime:
         self.on_subscription_matched = SUBSCRIPTION_MATCHED_PROTO(trivial_on_subscription_matched)
         self.on_sample_lost = SAMPLE_LOST_PROTO(trivial_on_sample_lost)
 
+        # -- QoS operations --
         self.ddslib.dds_qos_create.restype = c_void_p
         self.ddslib.dds_qos_create.argtypes = []
 
@@ -784,35 +767,36 @@ class Runtime:
         self.ddslib.dds_qset_ownership_strength.restype = None
         self.ddslib.dds_qset_ownership_strength.argtypes = [c_void_p, c_uint32]
 
+        # -- read / take --
         self.ddslib.dds_read.restype = c_int
-        # the_runtime.ddslib.dds_read.argtypes = []
-        # //         rs = the_runtime.ddslib.dds_read(self.handle, samples, n, info, sample_selector)
-
+        self.ddslib.dds_read.argtypes = [c_void_p, POINTER(c_void_p), c_uint32, POINTER(SampleInfo), c_uint32]
 
         self.ddslib.dds_take.restype = c_int
-        # the_runtime.ddslib.dds_take.argtypes = []
+        self.ddslib.dds_take.argtypes = [c_void_p, POINTER(c_void_p), c_uint32, POINTER(SampleInfo), c_uint32]
 
-        # self.ddslib.dds_instance_dispose.restype = c_uint
-        # self.ddslib.dds_instance_dispose.argtypes = [c_uint64, c_void_p]
-        #
-        # self.ddslib.dds_write.restype = c_uint
-        # self.ddslib.dds_write.argtypes = [c_uint64, c_void_p]
+        # -- dispoase --
+
+        self.ddslib.dds_instance_dispose.restype = c_uint
+        self.ddslib.dds_instance_dispose.argtypes = [c_void_p, c_void_p]
+
+        self.ddslib.dds_write.restype = c_uint
+        self.ddslib.dds_write.argtypes = [c_void_p, c_void_p]
 
         # -- Waitset Operations --
 
-        ## create/detele
+        # create/detele
         self.ddslib.dds_waitset_create.restype = c_void_p
         self.ddslib.dds_waitset_create.argtypes = None
         self.ddslib.dds_waitset_delete.restype = c_int
         self.ddslib.dds_waitset_delete.argtypes = [c_void_p]
 
-        ## attach / detach
+        # attach / detach
         self.ddslib.dds_waitset_attach.restype = c_int
         self.ddslib.dds_waitset_attach.argtypes = [c_void_p, c_void_p, c_void_p]
         self.ddslib.dds_waitset_detach.restype = c_int
         self.ddslib.dds_waitset_detach.argtypes = [c_void_p, c_void_p]
 
-        ## wait
+        # wait
         self.ddslib.dds_waitset_wait.restype = c_int
         self.ddslib.dds_waitset_wait.argtypes = [c_void_p, POINTER(c_void_p), c_int, c_int64]
 
@@ -821,8 +805,6 @@ class Runtime:
         self.ddslib.dds_readcondition_create.argtypes = [c_void_p, c_uint32]
         self.ddslib.dds_condition_delete.restype = None
         self.ddslib.dds_condition_delete.argtypes = [c_void_p]
-
-
 
         global the_runtime
         the_runtime = self
@@ -872,7 +854,7 @@ class Runtime:
         return self.bitypes.dython_bit_Dython_desc
 
     def to_rw_qos(self, ps):
-        if ps == None:
+        if ps is None:
             return None
 
         qos = self.create_dds_qos()
@@ -905,7 +887,7 @@ class Runtime:
 
 
     def to_ps_qos(self, ps):
-        if ps == None:
+        if ps is None:
             return None
 
         qos = self.create_dds_qos()
@@ -928,4 +910,3 @@ class Runtime:
 
     def close(self):
         self.ddslib.dds_fini()
-

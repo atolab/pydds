@@ -1,6 +1,6 @@
 __author__ = 'Angelo Corsaro'
 
-from dds.dds import *
+from dds import *
 import  time
 
 if __name__ == '__main__':

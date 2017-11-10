@@ -1,12 +1,15 @@
 __author__ = 'Angelo Corsaro'
 
-from dds.dds import *
+from dds import *
 import  time
 
 def onDataAvailable(r):
     samples = r.read(new_samples())
-    for s in samples:
-        print ('reader>> ({0}, {1})'.format(s.key, s.value))
+    for (d, i) in samples:
+        if i.valid_data:
+            print ('reader>> ({0}, {1})'.format(d.key, d.value))
+        else:
+            print('reader>> ({0}, None)'.format(d.key))
 
 def testDynaTypes():
     rt = Runtime()
