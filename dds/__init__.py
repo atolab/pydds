@@ -278,6 +278,9 @@ class SampleInfo(Structure):
 
 
 
+class KeyHolder(object):
+    def __init__(self, k):
+        self.key = k
 
 
 REQUESTED_DEADLINE_MISSED_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
@@ -559,8 +562,7 @@ class FlexyReader:
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
                 print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
-                data.append(v)
+                data.append(KeyHolder(k))
 
         return zip(data, infos)
 
@@ -596,8 +598,7 @@ class FlexyReader:
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
                 print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
-                data.append(v)
+                data.append(KeyHolder(k))
 
 
         return zip(data, infos)
@@ -681,8 +682,7 @@ class DataReader:
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
                 print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
-                data.append(v)
+                data.append(KeyHolder(k))
 
 
         return zip(data, infos)
@@ -718,8 +718,7 @@ class DataReader:
             else:
                 k = sp[0].key.decode(encoding='UTF-8')
                 print(">>> FlexyReader::read_n: Received invalid data for key = {0}".format(k))
-                v = DDSKeyValue(k, c_char_p("Invalid Data!"))
-                data.append(v)
+                data.append(KeyHolder(k))
 
         return zip(data, infos)
 
