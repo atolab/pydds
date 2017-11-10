@@ -5,8 +5,9 @@ import  time
 import sys
 from random import randint
 
-class VehiclePosition:
+class VehiclePosition(Topic):
     def __init__(self, cid):
+        super(Topic, self).__init__()
         self.x = 0
         self.y = 0
         self.key_ = cid
