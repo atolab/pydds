@@ -98,6 +98,17 @@ DDS_LIVELINESS_AUTOMATIC = 0
 DDS_LIVELINESS_MANUAL_BY_PARTICIPANT = 1
 DDS_LIVELINESS_MANUAL_BY_TOPIC = 2
 
+def dds_secs(n):
+    return n*1000000000
+
+def dds_millis(n):
+    return n*1000000
+
+def dds_micros(n):
+    return n*1000
+
+def dds_nanos(n):
+    return n
 
 class TopicType(object):
     def gen_key(self): None
@@ -433,6 +444,35 @@ class DataWriter:
     def dispose_instance(self, s):
         self.rt.ddslib.dds_instance_dispose	(self.handle, byref(s))
 
+# The current waitset implementation has the limitation that can wait
+# on a single condition.
+class WaitSet(object):
+    def __init__(self, condition):
+        global the_runtime
+        self.rt = the_runtime
+        self.handle = c_void_p(self.rt.ddslib.dds_waitset_create())
+        self.condition = condition
+        self.rt.ddslib.dds_waitset_attach(self.handle, self.condition, None)
+
+    def close(self):
+        self.rt.ddslib.dds_waitset_detach(self.handle, self.condition)
+        self.rt.ddslib.dds_waitset_delete(self.handle)
+
+    def wait(self, timeout):
+        # we only have one condition
+        cs = (c_void_p * 1)()
+        pcs = cast(cs, c_void_p)
+        s = self.rt.ddslib.dds_waitset_wait(self.handle, byref(pcs), 1, timeout)
+        if s == 0:
+            # print(">>> Waitset.Wait: Timed-out!")
+            return False
+        else:
+            # print(">>> Waitset.Wait: triggered {0} conditions".format(s))
+            return True
+
+def do_nothing(dr):
+    pass
+
 class FlexyReader:
     def __init__(self, sub, flexy_topic, policies, flexy_data_listener):
         global the_runtime
@@ -441,7 +481,10 @@ class FlexyReader:
         self.sub = sub
         self.flexy_topic = flexy_topic
         self.policies = policies
-        self.data_listener = flexy_data_listener
+        if flexy_data_listener == None:
+            self.data_listener = do_nothing
+        else:
+            self.data_listener = flexy_data_listener
 
         self.listener = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                           self.rt.on_requested_incompatible_qos,
@@ -477,14 +520,35 @@ class FlexyReader:
     def __handle_liveliness_change(self, r, s):
         self._liveliness_listener(self, s)
 
+    def wait_for_data(self, selector, timeout):
+        condition = c_void_p(self.rt.ddslib.dds_readcondition_create(self.handle, selector))
+        ws = WaitSet(condition)
+        r = ws.wait(timeout)
+        ws.close()
+        return r
+
+    # sread is the synchronous read, that means this blocks until some data is received
+    def sread(self, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.read(selector)
+        else:
+            return []
+
     def read(self, selector):
         return self.read_n(MAX_SAMPLES, selector)
+
+
+    def sread_n(self, n, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.read_n(n, selector)
+        else:
+            return []
 
     def read_n(self, n, sample_selector):
         ivec = (SampleInfo * n)()
         infos = cast(ivec, POINTER(SampleInfo))
         samples = (c_void_p * n)()
-        nr = the_runtime.ddslib.dds_read(self.handle, samples, n, infos, sample_selector)
+        nr = self.rt.ddslib.dds_read(self.handle, samples, n, infos, sample_selector)
 
         data = []
         for i in range(nr):
@@ -500,8 +564,20 @@ class FlexyReader:
 
         return zip(data, infos)
 
+    def stake(self, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.take(selector)
+        else:
+            return []
+
     def take(self, selector):
         return self.take_n(MAX_SAMPLES, selector)
+
+    def stake_n(self, n, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.take_n(n, selector)
+        else:
+            return []
 
     def take_n(self, n, sample_selector):
         ivec = (SampleInfo * n)()
@@ -538,7 +614,10 @@ class DataReader:
         self.sub = sub
         self.topic = topic
         self.policies = policies
-        self.data_listener = data_listener
+        if data_listener == None:
+            self.data_listener = do_nothing
+        else:
+            self.data_listener = data_listener
 
         self.listener = DDSReaderListener(self.rt.on_requested_deadline_missed,
                                           self.rt.on_requested_incompatible_qos,
@@ -563,6 +642,25 @@ class DataReader:
 
     def handle_data(self, r):
         self.data_listener(self)
+
+    def wait_for_data(self, selector, timeout):
+        condition = self.rt.ddslib.dds_readcondition_create(self.handle, selector)
+        ws = WaitSet(condition)
+        r = ws.wait(timeout)
+        ws.close()
+        return r
+
+    def stake(self, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.take(selector)
+        else:
+            return []
+
+    def stake_n(self, n, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.take_n(n, selector)
+        else:
+            return []
 
     def take(self, selector):
         return self.take_n(MAX_SAMPLES, selector)
@@ -589,8 +687,20 @@ class DataReader:
 
         return zip(data, infos)
 
+    def sread(self, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.read(selector)
+        else:
+            return []
+
     def read(self, selector):
         return self.read_n(MAX_SAMPLES, selector)
+
+    def sread_n(self, n, selector, timeout):
+        if self.wait_for_data(selector, timeout):
+            return self.read_n(n, selector)
+        else:
+            return []
 
     def read_n(self, n, sampleSelector):
         ivec = (SampleInfo * n)()
@@ -683,11 +793,37 @@ class Runtime:
         self.ddslib.dds_take.restype = c_int
         # the_runtime.ddslib.dds_take.argtypes = []
 
-        self.ddslib.dds_instance_dispose.restype = c_uint
-        self.ddslib.dds_instance_dispose.argtype = [c_uint64, c_void_p]
+        # self.ddslib.dds_instance_dispose.restype = c_uint
+        # self.ddslib.dds_instance_dispose.argtypes = [c_uint64, c_void_p]
+        #
+        # self.ddslib.dds_write.restype = c_uint
+        # self.ddslib.dds_write.argtypes = [c_uint64, c_void_p]
 
-        self.ddslib.dds_write.restype = c_uint
-        self.ddslib.dds_write.argtype = [c_uint64, c_void_p]
+        # -- Waitset Operations --
+
+        ## create/detele
+        self.ddslib.dds_waitset_create.restype = c_void_p
+        self.ddslib.dds_waitset_create.argtypes = None
+        self.ddslib.dds_waitset_delete.restype = c_int
+        self.ddslib.dds_waitset_delete.argtypes = [c_void_p]
+
+        ## attach / detach
+        self.ddslib.dds_waitset_attach.restype = c_int
+        self.ddslib.dds_waitset_attach.argtypes = [c_void_p, c_void_p, c_void_p]
+        self.ddslib.dds_waitset_detach.restype = c_int
+        self.ddslib.dds_waitset_detach.argtypes = [c_void_p, c_void_p]
+
+        ## wait
+        self.ddslib.dds_waitset_wait.restype = c_int
+        self.ddslib.dds_waitset_wait.argtypes = [c_void_p, POINTER(c_void_p), c_int, c_int64]
+
+        # -- Condition Operations --
+        self.ddslib.dds_readcondition_create.restype = c_void_p
+        self.ddslib.dds_readcondition_create.argtypes = [c_void_p, c_uint32]
+        self.ddslib.dds_condition_delete.restype = None
+        self.ddslib.dds_condition_delete.argtypes = [c_void_p]
+
+
 
         global the_runtime
         the_runtime = self
@@ -793,3 +929,4 @@ class Runtime:
 
     def close(self):
         self.ddslib.dds_fini()
+
