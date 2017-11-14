@@ -53,4 +53,3 @@ if __name__ == '__main__':
         print('Wrote: {0}'.format(vpos))
         vpos.moveBy(dx, dy)
         time.sleep(1)
-
