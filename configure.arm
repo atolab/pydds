@@ -1,0 +1,12 @@
+# -*-Makefile-*-
+#!/bin/bash
+
+#export ARM_OSPL_HOME=/src/HDE/armv7l.linux
+PDDS_LIB=libdython.so
+
+pushd &> /dev/null
+cd builtin-types
+make -f Makefile.arm
+#cp ${PDDS_LIB} ${OSPL_HOME}/lib
+#popd &> /dev/null
+
