@@ -5,5 +5,5 @@ setup(
 	version='0.0.1dev',
 	packages=['dds',],
 	author='Angelo Corsaro',
-	install_requires=['jsonpickle',]
+	install_requires=[]
 )
