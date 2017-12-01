@@ -115,72 +115,74 @@ class TopicType(object):
 
 
 class Policy:
-    def __init__(self, id):
+    def __init__(self, id, kind):
         self.id = id
-
+        self.kind = kind
 
 class Partition(Policy):
     def __init__(self, ps):
-        Policy.__init__(self, DDS_PARTITION_QOS_POLICY_ID)
+        Policy.__init__(self, DDS_PARTITION_QOS_POLICY_ID, None)
         self.partitions = ps
 
 
 class Reliable(Policy):
-    def __init__(self):
-        Policy.__init__(self, DDS_RELIABILITY_RELIABLE)
-        self.max_blocking_time = 0
+    def __init__(self, blocking_time = 0):
+        Policy.__init__(self, DDS_RELIABILITY_QOS_POLICY_ID, DDS_RELIABILITY_RELIABLE)
+        self.max_blocking_time = blocking_time
 
 
 class BestEffort(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_RELIABILITY_BEST_EFFORT)
+        Policy.__init__(self, DDS_RELIABILITY_QOS_POLICY_ID, DDS_RELIABILITY_BEST_EFFORT)
+        self.max_blocking_time = 0
 
 
 class KeepLastHistory(Policy):
     def __init__(self, depth):
-        Policy.__init__(self, DDS_HISTORY_KEEP_LAST)
+        Policy.__init__(self, DDS_HISTORY_QOS_POLICY_ID, DDS_HISTORY_KEEP_LAST)
         self.depth = depth
 
 
 class KeepAllHistory(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_HISTORY_KEEP_ALL)
+        Policy.__init__(self, DDS_HISTORY_QOS_POLICY_ID, DDS_HISTORY_KEEP_ALL)
+        self.depth = 0
 
 
 class Volatile(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_DURABILITY_VOLATILE)
+        Policy.__init__(self, DDS_DURABILITY_QOS_POLICY_ID, DDS_DURABILITY_VOLATILE)
 
 
 class TransientLocal(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_DURABILITY_TRANSIENT_LOCAL)
+        Policy.__init__(self, DDS_DURABILITY_QOS_POLICY_ID, DDS_DURABILITY_TRANSIENT_LOCAL)
 
 
 class Transient(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_DURABILITY_TRANSIENT)
+        Policy.__init__(self, DDS_DURABILITY_QOS_POLICY_ID,  DDS_DURABILITY_TRANSIENT)
 
 
 class Persistent(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_DURABILITY_PERSISTENT)
+        Policy.__init__(self, DDS_DURABILITY_QOS_POLICY_ID, DDS_DURABILITY_PERSISTENT)
 
 
 class ExclusiveOwnership(Policy):
     def __init__(self, strength):
-        Policy.__init__(self, DDS_OWNERSHIP_EXCLUSIVE)
+        Policy.__init__(self, DDS_OWNERSHIP_QOS_POLICY_ID, DDS_OWNERSHIP_EXCLUSIVE)
         self.strength = strength
 
 
 class SharedOwnership(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_OWNERSHIP_SHARED)
+        Policy.__init__(self, DDS_OWNERSHIP_QOS_POLICY_ID, DDS_OWNERSHIP_SHARED)
 
 
 class ManualInstanceDispose(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID)
+        Policy.__init__(self, DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID, None)
         self.auto_dispose = False
 
 
@@ -386,10 +388,10 @@ class Topic:
         self.topic_name = topic_name
         self.type_support = type_support
         self.data_type = data_type
-        self.qos = qos
+        self.qos = self.rt.to_rw_qos(qos)
 
         self.handle = c_void_p()
-        self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name.encode(), qos, None)
+        self.rt.ddslib.dds_topic_create(dp.handle, byref(self.handle), type_support, topic_name.encode(), self.qos, None)
 
 
 class FlexyWriter:
@@ -425,8 +427,8 @@ class DataWriter:
         self.policies = policies
         self.handle = c_void_p()
 
-        qos = self.rt.to_rw_qos(policies)
-        self.rt.ddslib.dds_writer_create(pub.handle, byref(self.handle), topic.handle, qos, None)
+        self.qos = self.rt.to_rw_qos(policies)
+        self.rt.ddslib.dds_writer_create(pub.handle, byref(self.handle), topic.handle, self.qos, None)
 
     def write(self, s):
         self.rt.ddslib.dds_write(self.handle, byref(s))
@@ -471,7 +473,7 @@ class FlexyReader:
         self.sub = sub
         self.sub = sub
         self.flexy_topic = flexy_topic
-        self.policies = policies
+        self.qos = self.rt.to_rw_qos(policies)
         if flexy_data_listener is None:
             self.data_listener = do_nothing
         else:
@@ -490,12 +492,11 @@ class FlexyReader:
         self.handle = c_void_p()
         topic = self.flexy_topic.topic
         qos = self.rt.to_rw_qos(policies)
-        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, qos, byref(self.listener))
+        self.rt.ddslib.dds_reader_create(sub.handle, byref(self.handle), topic.handle, self.qos, byref(self.listener))
         self.rt.register_data_listener(self.handle, self.__handle_data)
 
     def on_data_available(self, fun):
         self.data_listener = fun
-        self.rt.register_data_listener(self.handle, fun)
 
     def on_subscription_matched(self, fun):
         self.subsciption_listener = fun
@@ -859,30 +860,19 @@ class Runtime:
         qos = self.create_dds_qos()
 
         for p in ps:
-            if p.id == DDS_DURABILITY_PERSISTENT:
-                self.ddslib.dds_qset_durability(qos, DDS_DURABILITY_PERSISTENT)
-            elif p.id == DDS_DURABILITY_TRANSIENT:
-                self.ddslib.dds_qset_durability(qos, DDS_DURABILITY_TRANSIENT)
-            elif p.id == DDS_DURABILITY_TRANSIENT_LOCAL:
-                self.ddslib.dds_qset_durability(qos, DDS_DURABILITY_TRANSIENT_LOCAL)
-            elif p.id == DDS_DURABILITY_VOLATILE:
-                self.ddslib.dds_qset_durability(qos, DDS_DURABILITY_VOLATILE)
-            elif p.id == DDS_HISTORY_KEEP_ALL:
-                self.ddslib.dds_qset_history(qos, DDS_HISTORY_KEEP_ALL, 0)
-            elif p.id == DDS_HISTORY_KEEP_LAST:
-                self.ddslib.dds_qset_history(qos, DDS_HISTORY_KEEP_LAST, p.depth)
-            elif p.id == DDS_RELIABILITY_RELIABLE:
-                self.ddslib.dds_qset_reliability(qos, DDS_RELIABILITY_RELIABLE, p.max_blocking_time)
-            elif p.id == DDS_RELIABILITY_BEST_EFFORT:
-                self.ddslib.dds_qset_reliability(qos, DDS_RELIABILITY_BEST_EFFORT, 0)
-            elif p.id == DDS_OWNERSHIP_SHARED:
-                self.ddslib.dds_qset_ownership(qos, DDS_OWNERSHIP_SHARED)
-            elif p.id == DDS_OWNERSHIP_EXCLUSIVE:
-                self.ddslib.dds_qset_ownership(qos, DDS_OWNERSHIP_EXCLUSIVE)
-                self.ddslib.dds_qset_ownership_strength(qos, p.strength)
+            if p.id == DDS_DURABILITY_QOS_POLICY_ID:
+                self.ddslib.dds_qset_durability(qos, p.kind)
+            elif p.id == DDS_HISTORY_QOS_POLICY_ID:
+                self.ddslib.dds_qset_history(qos, p.kind, p.depth)
+            elif p.id == DDS_RELIABILITY_QOS_POLICY_ID:
+                self.ddslib.dds_qset_reliability(qos, p.kind, p.max_blocking_time)
+            elif p.id == DDS_OWNERSHIP_QOS_POLICY_ID:
+                self.ddslib.dds_qset_ownership(qos, p.kind)
+                if p.kind == DDS_OWNERSHIP_EXCLUSIVE:
+                    self.ddslib.dds_qset_ownership_strength(qos, p.strength)
             elif p.id == DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID:
                 self.ddslib.dds_qset_writer_data_lifecycle(qos, p.auto_dispose)
-            return qos
+        return qos
 
 
     def to_ps_qos(self, ps):

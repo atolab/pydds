@@ -37,11 +37,14 @@ if __name__ == '__main__':
     rt = Runtime()
     dp = Participant(0)
 
+    print("Persistent id = {0}".format(Persistent().id))
+    print("Reliable id = {0}".format(Reliable().id))
+    print("KeepLastHistory id = {0}".format(KeepLastHistory(1).id))
     # 'VehiclePosition'
-    t = FlexyTopic(dp, 'KeyValue')
+    t = FlexyTopic(dp, 'KeyValue', None, [Reliable(),Persistent(), KeepLastHistory(1)])
 
     p = Publisher(dp, [Partition(['dds-python.demo'])])
-    w = FlexyWriter(p, t, [Reliable(),Transient(), KeepLastHistory(1)])
+    w = FlexyWriter(p, t, [Reliable(),Persistent(), KeepLastHistory(1), ManualInstanceDispose()])
 
     vpos = VehiclePosition(cid)
     dx = 1

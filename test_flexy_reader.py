@@ -35,16 +35,19 @@ def testDynaTypes():
     rt = Runtime()
     dp = Participant(0)
 
-    t = FlexyTopic(dp,  'KeyValue')
+    t = FlexyTopic(dp,  'KeyValue',None, [Reliable(), Persistent(), KeepLastHistory(1)])
     s = Subscriber(dp, [Partition(['dds-python.demo'])])
 
-    dr = FlexyReader(s, t, [Reliable(), Transient(), KeepLastHistory(1)], onDataAvailable)
-    dr.wait_history(dds_secs(5))
+    dr = FlexyReader(s, t, [Reliable(), Persistent(), KeepLastHistory(1)], None)
+
+    dr.wait_history(dds_secs(2))
+
     samples = dr.read(all_samples())
     for s in samples:
         if s[1].valid_data:
             print('reader>> {0})'.format(s[0]))
 
+    dr.on_data_available(onDataAvailable)
     time.sleep(6000)
 
 if __name__ == '__main__':
