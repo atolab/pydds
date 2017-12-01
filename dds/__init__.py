@@ -292,20 +292,20 @@ SAMPLE_LOST_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
 
 # There are actually used to check the the listener are actually working...
 
-def trivial_on_requested_deadline_missed(e, s):
+def trivial_on_requested_deadline_missed(r, s):
     print(">> trivial_on_requested_deadline_missed")
 
 
-def trivial_on_requested_incompatible_qos(e, s):
+def trivial_on_requested_incompatible_qos(r, s):
     print(">> trivial_on_requested_incompatible_qos")
 
 
-def trivial_on_sample_rejected(e, s):
+def trivial_on_sample_rejected(r, s):
     print(">> trivial_on_sample_rejected")
 
 
-def trivial_on_liveliness_changed(e, s):
-    print(">> trivial_on_liveliness_changed")
+def trivial_on_liveliness_changed(r, s):
+    Runtime.dispatch_liveliness_changed_listener(c_void_p(r), s)
 
 
 def trivial_on_data_available(r):
@@ -313,7 +313,6 @@ def trivial_on_data_available(r):
 
 
 def trivial_on_subscription_matched(e, s):
-    print(">> trivial_on_subscription_matched")
     Runtime.dispatch_subscription_matched_listener(e, s)
 
 
