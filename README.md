@@ -19,25 +19,24 @@ Regardless of the kinds of type definition interoperability and instance managem
 
 - [**jsonpikle**](https://github.com/jsonpickle/jsonpickle), please refer to the project page for installation informations.
 
-- [**Vortex Lite**](http://www.prismtech.com), refer to the installation instructions to see how to get it set up.
+- [**OpenSplice Lite**](https://github.com/ADLINK-IST/opensplice), refer to the installation instructions to see how to get it set up.
 
-Once the dependencies are intalled simply do:
+Once the dependencies are intalled simply do (assuming your are running on Linux):
 
-	$ cd dds-python/builtin-types
-	$ make
+	$ cd dds-python
+	$ ./configure.linux
+	$ python3 setup.py install 
 
 To test your installation do:
 
-	$ cd dds-python
 	$ python test_reader.py &
 	$ python test_writer.py 
 	
 
 Equivalently you can test the flexy types by:
 
-	$ cd dds-python
-	$ python test_flexy_reader.py &
 	$ python test_flexy_writer.py 
+	$ python test_flexy_reader.py 
 
 
 
