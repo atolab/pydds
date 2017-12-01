@@ -180,13 +180,13 @@ class SharedOwnership(Policy):
 
 class ManualInstanceDispose(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
+        Policy.__init__(self, DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID)
         self.auto_dispose = False
 
 
 class AutoInstanceDispose(Policy):
     def __init__(self):
-        Policy.__init__(self, DDS_LIFESPAN_QOS_POLICY_ID)
+        Policy.__init__(self, DDS_WRITERDATALIFECYCLE_QOS_POLICY_ID)
         self.auto_dispose = True
 
 

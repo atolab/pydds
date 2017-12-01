@@ -41,7 +41,7 @@ if __name__ == '__main__':
     t = FlexyTopic(dp, 'KeyValue')
 
     p = Publisher(dp, [Partition(['dds-python.demo'])])
-    w = FlexyWriter(p, t, [Reliable(),KeepLastHistory(1)])
+    w = FlexyWriter(p, t, [Reliable(),Transient(), KeepLastHistory(1)])
 
     vpos = VehiclePosition(cid)
     dx = 1
@@ -52,4 +52,5 @@ if __name__ == '__main__':
         w.write(vpos)
         print('Wrote: {0}'.format(vpos))
         vpos.moveBy(dx, dy)
-        time.sleep(1)
+        print('Press a key to move the vehicle...')
+        input()

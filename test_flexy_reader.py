@@ -28,7 +28,8 @@ class VehiclePosition(Topic):
 def onDataAvailable(r):
     samples = r.read(all_samples())
     for s in samples:
-        print ('reader>> {0})'.format(s[0]))
+        if s[1].valid_data:
+            print ('reader>> {0})'.format(s[0]))
 
 def testDynaTypes():
     rt = Runtime()
@@ -37,7 +38,12 @@ def testDynaTypes():
     t = FlexyTopic(dp,  'KeyValue')
     s = Subscriber(dp, [Partition(['dds-python.demo'])])
 
-    dr = FlexyReader(s, t, [Reliable(), KeepLastHistory(1)], onDataAvailable)
+    dr = FlexyReader(s, t, [Reliable(), Transient(), KeepLastHistory(1)], onDataAvailable)
+    dr.wait_history(dds_secs(5))
+    samples = dr.read(all_samples())
+    for s in samples:
+        if s[1].valid_data:
+            print('reader>> {0})'.format(s[0]))
 
     time.sleep(6000)
 
