@@ -401,7 +401,8 @@ class FlexyWriter:
 
     def write(self, s):
         gk = self.keygen(s)
-        key = jsonpickle.encode(gk)
+        kh = KeyHolder(gk)
+        key = jsonpickle.encode(kh)
         value = jsonpickle.encode(s)
         x = DDSKeyValue(key.encode(), value.encode())
         self.writer.write(x)
@@ -551,8 +552,8 @@ class FlexyReader:
                 v = sp[0].value.decode(encoding='UTF-8')
                 data.append(jsonpickle.decode(v))
             else:
-                k = sp[0].key.decode(encoding='UTF-8')
-                data.append(KeyHolder(k))
+                kh = jsonpickle.decode(sp[0].key.decode(encoding='UTF-8'))
+                data.append(kh)
 
         return zip(data, infos)
 
@@ -586,8 +587,8 @@ class FlexyReader:
                 v = sp[0].value.decode(encoding='UTF-8')
                 data.append(jsonpickle.decode(v))
             else:
-                k = sp[0].key.decode(encoding='UTF-8')
-                data.append(KeyHolder(k))
+                kh = jsonpickle.decode(sp[0].key.decode(encoding='UTF-8'))
+                data.append(kh)
 
         return zip(data, infos)
 
