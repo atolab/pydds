@@ -3,10 +3,10 @@
 from setuptools import setup
 
 setup(
-	name='python-ato-dds',
+	name='pydds',
 	version='0.1.0',
 	packages=['dds',],
 	author='kydos',
-    url='https://github.com/atolab/dds-python'
+    url='https://github.com/atolab/pydds'
 	install_requires=['jsonpickle']
 )
