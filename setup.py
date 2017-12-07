@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
 from setuptools import setup
 
 setup(
 	name='python-ato-dds',
-	version='0.0.1dev',
+	version='0.1.0',
 	packages=['dds',],
-	author='Angelo Corsaro',
+	author='kydos',
+    url='https://github.com/atolab/dds-python'
 	install_requires=['jsonpickle']
 )
