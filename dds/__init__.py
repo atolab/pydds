@@ -413,10 +413,12 @@ class FlexyWriter:
 
     def dispose_instance(self, s):
         gk = self.keygen(s)
-        key = jsonpickle.encode(gk)
+        kh = KeyHolder(gk)
+        key = jsonpickle.encode(kh)
         value = jsonpickle.encode(s)
         x = DDSKeyValue(key.encode(), value.encode())
         self.writer.dispose_instance(x)
+
 
 
 class DataWriter:
