@@ -7,6 +7,6 @@ setup(
 	version='0.1.0',
 	packages=['dds',],
 	author='kydos',
-    url='https://github.com/atolab/pydds'
+    	url='https://github.com/atolab/pydds',
 	install_requires=['jsonpickle']
 )
