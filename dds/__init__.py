@@ -4,7 +4,74 @@ from ctypes import *
 import os
 import jsonpickle
 import platform
+import logging
+import time
 
+class DDSLogger:
+    class __SingletonLogger:
+        def __init__(self, file_name=None, debug_flag=False):
+
+            if file_name is None:
+                self.log_file = 'pydds.log'
+            else:
+                self.log_file = file_name
+
+            self.debug_flag = debug_flag
+
+            if debug_flag:
+                logging.basicConfig(format='[%(asctime)s] - [%(levelname)s] > %(message)s',
+                                    level=logging.DEBUG)
+            else:
+                logging.basicConfig(filename=self.log_file,
+                                    format='[%(asctime)s] - [%(levelname)s] > %(message)s',
+                                    level=logging.DEBUG)
+
+            self.logger = logging.getLogger(__name__)
+
+        def info(self, caller, message):
+            self.logger.info(str('< %s > %s') % (caller, message))
+
+        def warning(self, caller, message):
+            self.logger.warning(str('< %s > %s') % (caller, message))
+
+        def error(self, caller, message):
+            self.logger.error(str('< %s > %s') % (caller, message))
+
+        def debug(self, caller, message):
+            self.logger.debug(str('< %s > %s') % (caller, message))
+
+    instance = None
+    enabled = True
+
+    def __init__(self, file_name=None, debug_flag=False):
+
+        if not DDSLogger.instance:
+            DDSLogger.instance = DDSLogger.__SingletonLogger(file_name, debug_flag)
+
+    def enable(self):
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False
+
+    def info(self, caller, message):
+        if self.enabled:
+            self.instance.info(caller, message)
+
+    def warning(self, caller, message):
+        if self.enabled:
+            self.instance.warning(caller, message)
+
+    def error(self, caller, message):
+        if self.enabled:
+            self.instance.error(caller, message)
+
+    def debug(self, caller, message):
+        if self.enabled:
+            self.instance.debug(caller, message)
+
+
+logger = DDSLogger()
 
 def get_lib_ext():
     system = platform.system()
@@ -43,6 +110,12 @@ DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE = 64
 DDS_ANY_INSTANCE_STATE =  DDS_ALIVE_INSTANCE_STATE | DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE | DDS_NOT_ALIVE_NO_WRITERS_INSTANCE_STATE
 
 DDS_ANY_STATE = DDS_ANY_SAMPLE_STATE | DDS_ANY_VIEW_STATE | DDS_ANY_INSTANCE_STATE
+
+
+DDS_NOT_REJECTED = 0
+DDS_REJECTED_BY_INSTANCES_LIMIT = 1
+DDS_REJECTED_BY_SAMPLES_LIMIT = 2
+DDS_REJECTED_BY_SAMPLES_PER_INSTANCE_LIMIT = 3
 
 #  QoS IDs
 DDS_INVALID_QOS_POLICY_ID = 0
@@ -295,15 +368,18 @@ SAMPLE_LOST_PROTO = CFUNCTYPE(None, c_void_p, c_void_p)
 # There are actually used to check the the listener are actually working...
 
 def trivial_on_requested_deadline_missed(r, s):
-    print(">> trivial_on_requested_deadline_missed")
+    global logger
+    logger.debug('DefaultListener', '>> Requested Deadline Missed')
 
 
 def trivial_on_requested_incompatible_qos(r, s):
-    print(">> trivial_on_requested_incompatible_qos")
+    global logger
+    logger.debug('DefaultListener', '>> Requested Incompatible QoS')
 
 
 def trivial_on_sample_rejected(r, s):
-    print(">> trivial_on_sample_rejected")
+    global logger
+    logger.debug('DefaultListener', '>> Sample Rejected')
 
 
 def trivial_on_liveliness_changed(r, s):
@@ -319,7 +395,8 @@ def trivial_on_subscription_matched(e, s):
 
 
 def trivial_on_sample_lost(e, s):
-    print(">> trivial_on_sample_lost")
+    global logger
+    logger.debug('DefaultListener', '>> Sample Lost')
 
 
 class DDSReaderListener(Structure):
@@ -832,7 +909,8 @@ class Runtime:
             fun = the_runtime.dataListenerMap[h]
             fun(handle)
         else:
-            print('warning>> Trying to dispatch listener for unknown reader {0}'.format(handle))
+            global logger
+            logger.warning('DDSRuntime', 'Trying to dispatch listener for unknown reader {0}'.format(handle))
 
     @staticmethod
     def dispatch_subscription_matched_listener(handle, s):
