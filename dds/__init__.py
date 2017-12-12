@@ -26,7 +26,7 @@ class DDSLogger:
                                     format='[%(asctime)s] - [%(levelname)s] > %(message)s',
                                     level=logging.DEBUG)
 
-            self.logger = logging.getLogger(__name__)
+            self.logger = logging.getLogger('pydds')
 
         def info(self, caller, message):
             self.logger.info(str('< %s > %s') % (caller, message))
