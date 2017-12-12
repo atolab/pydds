@@ -18,15 +18,26 @@ class DDSLogger:
 
             self.debug_flag = debug_flag
 
-            if debug_flag:
-                logging.basicConfig(format='[%(asctime)s] - [%(levelname)s] > %(message)s',
-                                    level=logging.DEBUG)
-            else:
-                logging.basicConfig(filename=self.log_file,
-                                    format='[%(asctime)s] - [%(levelname)s] > %(message)s',
-                                    level=logging.DEBUG)
+            self.logger = logging.getLogger(__name__+'.pydds')
 
-            self.logger = logging.getLogger('pydds')
+
+            log_format = '[%(asctime)s] - [%(levelname)s] > %(message)s'
+            log_level = logging.DEBUG
+
+            self.logger = logging.getLogger(__name__ + '.pydds')
+
+            self.logger.setLevel(log_level)
+            formatter = logging.Formatter(log_format)
+            if not debug_flag:
+                log_filename = self.log_file
+                handler = logging.FileHandler(log_filename)
+            else:
+                handler = logging.StreamHandler(sys.stdout)
+
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+
+
 
         def info(self, caller, message):
             self.logger.info(str('< %s > %s') % (caller, message))
