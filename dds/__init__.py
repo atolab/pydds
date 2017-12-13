@@ -5,6 +5,7 @@ import os
 import jsonpickle
 import platform
 import logging
+import sys
 import time
 
 class DDSLogger:
@@ -17,9 +18,6 @@ class DDSLogger:
                 self.log_file = file_name
 
             self.debug_flag = debug_flag
-
-            self.logger = logging.getLogger(__name__+'.pydds')
-
 
             log_format = '[%(asctime)s] - [%(levelname)s] > %(message)s'
             log_level = logging.DEBUG
