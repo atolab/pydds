@@ -93,8 +93,15 @@ def get_lib_ext():
 
 
 # @TODO: Fix this to go and look for the right library...
-ospl_lib = 'libdcpsc99' + get_lib_ext()
+system = platform.system()
+if system == 'Windows':
+    ospl_lib = 'dcpsc99.lib'
+else:
+    ospl_lib = 'libdcpsc99' + get_lib_ext()
+
+
 bit_lib = 'libdython' + get_lib_ext()
+
 
 ospl_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + ospl_lib
 
