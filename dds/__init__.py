@@ -95,18 +95,21 @@ def get_lib_ext():
 # @TODO: Fix this to go and look for the right library...
 system = platform.system()
 if system == 'Windows':
-    ospl_lib = 'dcpsc99.lib'
+    ospl_lib = 'dcpsc99' + get_lib_ext()
+    ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'bin',ospl_lib)
 else:
     ospl_lib = 'libdcpsc99' + get_lib_ext()
+    ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',ospl_lib)
+
+
 
 
 bit_lib = 'libdython' + get_lib_ext()
 
-
-ospl_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + ospl_lib
-
 # Yes, this assumes that the Python BIT should be under the OSPL lib... If not there copy it!
-ospl_bit_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + bit_lib
+#ospl_bit_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + bit_lib
+ospl_bit_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',bit_lib)
+
 
 # Limits and Constants
 MAX_SAMPLES = 256
