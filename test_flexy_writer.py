@@ -1,4 +1,4 @@
-_author__ = 'Angelo Corsaro'
+,_author__ = 'Angelo Corsaro'
 
 from dds import *
 import  time
@@ -55,5 +55,6 @@ if __name__ == '__main__':
         w.write(vpos)
         print('Wrote: {0}'.format(vpos))
         vpos.moveBy(dx, dy)
-        print('Press a key to move the vehicle...')
-        input()
+        #print('Press a key to move the vehicle...')
+        #input()
+        time.sleep(0.5)
