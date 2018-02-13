@@ -1,4 +1,4 @@
-,_author__ = 'Angelo Corsaro'
+_author__ = 'Angelo Corsaro'
 
 from dds import *
 import  time
