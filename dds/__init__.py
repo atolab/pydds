@@ -91,15 +91,27 @@ def get_lib_ext():
     else:
         return '.dll'
 
+def get_user_lib_path():
+    system = platform.system()
+    if system == 'Linux':
+        return '/usr/local/lib'
+    elif system == 'Darwin':
+        return '/usr/local/lib'
+    else:
+        return '/usr/local/lib'
+
 
 # @TODO: Fix this to go and look for the right library...
 system = platform.system()
 if system == 'Windows':
     ospl_lib = 'dcpsc99' + get_lib_ext()
-    ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'bin',ospl_lib)
+    ospl_lib_path = os.path.join(get_user_lib_path(), ospl_lib)
+    ospl_lib_path = os.path.join(get_user_lib_path(), ospl_lib)
+    #ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'bin',ospl_lib)
 else:
     ospl_lib = 'libdcpsc99' + get_lib_ext()
-    ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',ospl_lib)
+    ospl_lib_path = os.path.join(get_user_lib_path(), ospl_lib)
+    #ospl_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',ospl_lib)
 
 
 
@@ -108,7 +120,8 @@ bit_lib = 'libdython' + get_lib_ext()
 
 # Yes, this assumes that the Python BIT should be under the OSPL lib... If not there copy it!
 #ospl_bit_lib_path = os.environ['OSPL_HOME'] + os.sep + 'lib' + os.sep + bit_lib
-ospl_bit_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',bit_lib)
+#ospl_bit_lib_path = os.path.join(os.environ['OSPL_HOME'],'lib',bit_lib)
+ospl_bit_lib_path = os.path.join(get_user_lib_path(), bit_lib)
 
 
 # Limits and Constants
